@@ -3,3 +3,8 @@
  *  hw1p12.c.
  */
 
+#include "hw1p12.c"
+
+int main(int argc, char **argv) {
+
+}
