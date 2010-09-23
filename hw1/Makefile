@@ -1,4 +1,7 @@
 include comp356.mk
 
-all : ms_driver.c
-	$(CC) -o ms_driver $(CFLAGS) $(CPPFLAGS) $< $(LDFLAGS)
+	
+
+ms_driver : ms_driver.o hw1p12.o
+	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $^ $(LDFLAGS)
+
