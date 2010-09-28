@@ -77,7 +77,7 @@ void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
     int* initial_array = malloc(size*sizeof(int));
     cp_array(xs, initial_array, size);
 
-    // Put initial_array in a node and on the stack; then enter the processing loop.
+    // Put initial_array in a node and on the stack; enter the processing loop.
     Node* initial_node = make_node(initial_array, size, unsorted);
     push(stack, initial_node);
 
@@ -117,7 +117,7 @@ void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
             if (!stk_is_empty(stack)) {
                 // If stack isn't empty, get next_node and merge or swap.
                 Node* next_node = pop(stack);
-                // If next node is sorted, merge them together; else switch them.
+                // If next_node's sorted, merge them together; else switch them.
                 if (next_node->state == sorted) {
                     // Merge them into a new node.
                     size_t first_half_size = cur_node->size;
@@ -141,7 +141,7 @@ void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
                 }
             } else {
                 // If stack is empty, then we're done.
-                // Copy final arrive to address pointed to by xs, because we can't modify the value of xs.
+                // Copy final array to address pointed to by xs.
                 cp_array(cur_node->array, xs, cur_node->size);
                 free_node(cur_node);
             }
