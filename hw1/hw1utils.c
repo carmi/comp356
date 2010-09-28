@@ -22,15 +22,7 @@
 #endif
 
 #include <stack356.h>
-#include "hw1p12.h"
 #include "hw1utils.h"
-
-// Function Signatures
-int compare(int, int);
-void half(int *initial, size_t initial_size, int *first, int *second);
-void cp_array(int* src, int* dest, size_t size);
-Node* make_node(int *array, size_t size, enum State state);
-void free_node(Node *node);
 
 // Debugging Functions
 void print_array(int *array, size_t length){
@@ -44,7 +36,7 @@ void print_array(int *array, size_t length){
 void print_node(Node* node, size_t counter) {
     printf("\n------------------------Node---------------------------\n     Array: ");
     print_array(node->array, node->size);
-    printf("\n#%d   Size: %d", counter, node->size);
+    printf("\n#%d   Size: %d", (int)counter, (int)node->size);
     if (node->state == sorted) printf("\n     State: sorted");
     if (node->state == unsorted) printf("\n     State: unsorted");
     printf("\n-------------------------------------------------------");
@@ -88,18 +80,18 @@ int compare(int x, int y) {
 /**
  * half - split a given array into two separate arrays.
  * @param initial - the array to be halved.
- * @param initial_size - the size of the array initial
  * @param first - the array to contain the first half of initial.
+ * @param first_size - the size of first.
  * @param second - the array to contain the second half of initial.
- * Precondition: arrays first and second are already allocated and big enough
- * to contain all elements of initial.
+ * @param second_size - the size of second.
+ * Precondition: initial has size first_size + second_size and all arrays
+ * have been allocated.
  */
-void half(int *initial, size_t initial_size, int *first, int *second) {
-    size_t middle = initial_size/2;
-    cp_array(initial, first, middle);
-    // initial + middle, is the subarray we want. same as &initial[2]
-    cp_array(initial+middle, second, (initial_size-middle));
-    return;
+void half(int *initial, int *first, size_t first_size, int *second,
+        size_t second_size) {
+    cp_array(initial, first, first_size);
+    // initial + middle is the subarray we want.
+    cp_array(initial + first_size, second, second_size);
 }
 
 /**
@@ -122,7 +114,7 @@ void cp_array(int* src, int* dest, size_t size) {
  * @param state - the node's state.
  * @returns - returns a pointer to the newly created Node.
  */
-Node* make_node(int *array, size_t size, enum State state) {
+Node* make_node(int *array, size_t size, State state) {
     Node* new_node = malloc(sizeof(Node));
     new_node->array = array;
     new_node->size = size;
