@@ -29,3 +29,5 @@ void free_node(Node *node);
 void print_array(int *array, size_t length);
 void print_node(Node* node, size_t counter);
 void print_stack(stack356_t* stack);
+void merge(int *first, size_t first_size, int *second, size_t second_size,
+        int* result, int(*compare)(int, int));

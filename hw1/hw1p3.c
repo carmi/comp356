@@ -139,23 +139,7 @@ void quick_sort_itr(int *xs, size_t size) {
             Sublist *current_sublist = pop(callStack);
             int startIndex = current_sublist->startIndex;
             int endIndex = current_sublist->endIndex;
-            // printf("Sorting list from index %d to index %d...\n", startIndex, endIndex);
-            // printf("Unpartitioned array:\n");
-            // printf("[");
-            // for (int i = 0; i < size; i++) {
-            //     if (i == 0) printf("%d", xs[0]);
-            //     else printf(", %d", xs[i]);
-            // }
-            // printf("]\n");
             int pivot_index = partition(xs, startIndex, endIndex);
-            // printf("Partitioned current sublist. Pivot at position %d...\n", pivot_index);
-            // printf("Partitioned array:\n");
-            // printf("[");
-            // for (int i = 0; i < size; i++) {
-            //      if (i == 0) printf("%d", xs[0]);
-            //      else printf(", %d", xs[i]);
-            // }
-            // printf("]\n");
             int leftStartIndex = startIndex;
             int leftEndIndex = pivot_index - 1;
             if (leftEndIndex - leftStartIndex >= 1) {
@@ -163,7 +147,6 @@ void quick_sort_itr(int *xs, size_t size) {
                 left_list->startIndex = leftStartIndex;
                 left_list->endIndex = leftEndIndex;
                 push(callStack, left_list);
-                // printf("    doing left\n");
             }
             int rightStartIndex = pivot_index + 1;
             int rightEndIndex = endIndex;
@@ -172,7 +155,6 @@ void quick_sort_itr(int *xs, size_t size) {
                 right_list->startIndex = rightStartIndex;
                 right_list->endIndex = rightEndIndex;
                 push(callStack, right_list);
-                // printf("     doing right\n");
             }
             free(current_sublist);
         }

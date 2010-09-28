@@ -25,10 +25,6 @@
 #include "hw1utils.h"
 #include <stack356.h>
 
-// Function Signatures
-void merge(int *first, size_t first_size, int *second, size_t second_size,
-        int* result, int(*compare)(int, int));
-
 /** Sort an array of integers according to a supplied comparison function. The
  * elements of the array will be rearranged into non-decreasing order according
  * to the comparison function.
@@ -151,48 +147,6 @@ void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
             }
         } else {
             printf("Unrecognized state.");
-        }
-    }
-}
-
-/**
- * Merge - merge two integer arrays together and return a single array
- * consisting of their elements in non-decreasing order. It is a precondition
- * that each input array is already sorted in non-decreasing order.
- *
- * @param first - the first array; must be sorted in non-decreasing order.
- * @param first_size - the length of first.
- * @param second - the second array; must be sorted in non-decreasing order.
- * @param second_size - the length of second.
- * @param compare - the comparison function. compare(x, y) returns
- *          a number < 0, 0, or a number > 0 as per x < y, x = y, or x > y.
- *
- * @return int* - returns a pointer to the array of the two input lists merged together.
- */
-void merge(int *first, size_t first_size, int *second, size_t second_size,
-        int* result, int(*compare)(int, int)) {
-    size_t result_size = first_size + second_size;
-    size_t first_index = 0;
-    size_t second_index = 0;
-    for (int result_index = 0; result_index < result_size; result_index++) {
-        if ((first_index < first_size) && (second_index < second_size)) {
-            // Compare first items of each array, and place smaller in result.
-            if (compare(first[first_index], second[second_index]) <= 0) {
-                result[result_index] = first[first_index];
-                first_index++;
-            }
-            else {
-                result[result_index] = second[second_index];
-                second_index++;
-            }
-        }
-        else if (first_index < first_size) {
-            result[result_index] = first[first_index];
-            first_index++;
-        }
-        else if (second_index < second_size) {
-            result[result_index] = second[second_index];
-            second_index++;
         }
     }
 }
