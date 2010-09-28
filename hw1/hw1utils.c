@@ -98,7 +98,7 @@ void half(int *initial, size_t initial_size, int *first, int *second) {
     size_t middle = initial_size/2;
     cp_array(initial, first, middle);
     // initial + middle, is the subarray we want. same as &initial[2]
-    cp_array(initial+middle, second, initial_size);
+    cp_array(initial+middle, second, (initial_size-middle));
     return;
 }
 

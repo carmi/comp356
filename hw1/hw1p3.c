@@ -1,5 +1,5 @@
-/** @file hw1p12.c
- *  @brief This file contains two programs: a recursive and iterative merge
+/** @file hw1p3
+ *  @brief This file contains two programs: a recursive and iterative quick
  *  sort implementation.
  */
 
@@ -22,47 +22,75 @@
 #include <GL/glut.h>
 #endif
 
-#include "hw1utils.h"
 #include <stack356.h>
+#include "hw1utils.h"
 
-// Function Signatures
-void merge_sort_rec(int *xs, size_t size, int(*compare)(int, int));
-void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int));
-int* merge(int *first, size_t first_size, int *second, size_t second_size,
-        int(*compare)(int, int));
+// Function Declarations
+void quick_sort_rec(int *xs, size_t start, size_t end, int(*compare)(int, int));
+size_t partition(int *array, size_t start, size_t end, int(*compare)(int, int));
+
+int main(int argc, char **argv) {
+    // Create an array of random integers.
+    size_t size = 5;
+    int* test_array = malloc(size*sizeof(int));
+    for (int i=0; i<size; i++)
+        test_array[i] = (rand() % 40);
+    
+    size_t starter = 0;
+    printf("\n----Created new array---\n");
+    print_array(test_array, size);
+    quick_sort_rec(test_array, starter, size-1, compare);
+    printf("\n----Array Sorted. Printing array---\n");
+    print_array(test_array, size);
+    printf("\n");
+}
 
 /** Sort an array of integers according to a supplied comparison function. The
  * elements of the array will be rearranged into non-decreasing order according
  * to the comparison function.
  *
  * @param xs - the array to sort
- * @param size - the length of xs. Must have size > 1
+ * @param start - the index in xs to begin quick sorting.
+ * @param end - the index in xs to stop quick sorting.
  * @param compare - the comparison function. compare(x, y) returns
  * a number < 0, 0, or a number > 0 as per x < y, x = y, or x > y.
  */
-void merge_sort_rec(int *xs, size_t size, int(*compare)(int, int)) {
+void quick_sort_rec(int *xs, size_t start, size_t end, int(*compare)(int, int)) {
     // Base case: if size is one or zero assume list is sorted and return.
-    if (size == 1 || size == 0) return;
+    if ((start-end) == 1 || (start-end) == 0) return;
     // Recursive case: divide into two parts and recursively sort list.
-    size_t middle = size/2;
-    int* first = malloc(middle*sizeof(int));
-    int* second = malloc((size-middle)*sizeof(int));
-    // Split xs into first and second
-    half(xs, size, first, second);
-
-    // Recursively sort both parts of divided array.
-    merge_sort_rec(first, middle, compare);
-    merge_sort_rec(second, (size - middle), compare);
-    
-    // After the above recursive sorts return, we can assume that first and
-    // second are each sorted in non-decreasing order. We then merge them into
-    // xs.
-    
-    // Copy the merged array into xs.
-    cp_array(merge(first, middle, second, (size - middle), compare), xs, size);
-    free(first);
-    free(second);
+    size_t pivot = partition(xs, start, end, compare);
+    if (start < (pivot-1)) quick_sort_rec(xs, start, pivot-1, compare);
+    if (pivot < end) quick_sort_rec(xs, pivot, end, compare);
     return;
+}
+
+/**
+ * partition - A quick sort partition function.
+ * @param array - the array to partition.
+ * @param start -the starting index in array.
+ * @param end -the ending index in array.
+ * @param compare - the comparison function.
+ */
+size_t partition(int *array, size_t start, size_t end, int(*compare)(int, int)) {
+    size_t a = start;
+    size_t b = end;
+
+    size_t pivot = (start + end)/2;
+
+    while (a <= b) {
+        while(compare(array[a], array[pivot]) <= 0) a++;
+        while(compare(array[pivot], array[b]) <= 0) b--;
+        if (a <= b) {
+            // Swap numbers
+            int temp = array[a];
+            array[a] = array[b];
+            array[b] = temp;
+            a++;
+            b--;
+        }
+    }
+    return a;
 }
 
 /**
@@ -76,20 +104,16 @@ void merge_sort_rec(int *xs, size_t size, int(*compare)(int, int)) {
  * @param compare - the comparison function. compare(x, y) returns
  * a number < 0, 0, or a number > 0 as per x < y, x = y, or x > y.
  */
-
+/*
 void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
     stack356_t* stack = make_stack();
 
-    // Copy xs to an array we can free and play with.
-    int* initial_array = malloc(size*sizeof(int));
-    cp_array(xs, initial_array, size);
-
-    // Put initial_array in a node and on the stack; then enter the processing loop.
-    Node* initial_node = make_node(initial_array, size, unsorted);
+    // Put xs in a node and on the stack; then enter the processing loop.
+    Node* initial_node = make_node(xs, size, unsorted);
     push(stack, initial_node);
 
     while(!stk_is_empty(stack)) {
-        //print_stack(stack);
+        print_stack(stack);
         Node* cur_node = pop(stack);
         
         // cur_node's state is unsorted, fake a recursive merge_sort
@@ -114,6 +138,7 @@ void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
                 Node* second_node = make_node(second, (cur_node->size-middle), unsorted);
                 push(stack, second_node);
 
+                // Free cur_node
                 free_node(cur_node);
             }
         } else if (cur_node->state == sorted) {
@@ -153,59 +178,4 @@ void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
     }
     return;
 }
-
-/**
- * Merge - merge two integer arrays together and return a single array
- * consisting of their elements in non-decreasing order. It is a precondition
- * that each input array is already sorted in non-decreasing order.
- *
- * @param first - the first array; must be sorted in non-decreasing order.
- * @param first_size - the length of first.
- * @param second - the second array; must be sorted in non-decreasing order.
- * @param second_size - the length of second.
- * @param compare - the comparison function. compare(x, y) returns
- *          a number < 0, 0, or a number > 0 as per x < y, x = y, or x > y.
- *
- * @return int* - returns a pointer to the array of the two input lists merged together.
- */
-int* merge(int *first, size_t first_size, int *second, size_t second_size,
-        int(*compare)(int, int)) {
-    // Create a new array to hold the result of the merge.
-    int* result = malloc((first_size + second_size)*sizeof(int));
-    // Create indices to keep track of position in arrays
-    size_t result_index = 0;
-    size_t first_index = 0;
-    size_t second_index = 0;
-    while ((first_index < first_size) || (second_index < second_size))
-    {
-        if ((first_index < first_size) && (second_index < second_size))
-        {
-            // Compare first items of each array, and place smaller in result.
-            if (compare(first[first_index], second[second_index]) <= 0)
-            {
-                result[result_index] = first[first_index];
-                result_index++;
-                first_index++;
-            }
-            else
-            {
-                result[result_index] = second[second_index];
-                result_index++;
-                second_index++;
-            }
-        }
-        else if (first_index < first_size)
-        {
-            result[result_index] = first[first_index];
-            result_index++;
-            first_index++;
-        }
-        else if (second_index < second_size)
-        {
-            result[result_index] = second[second_index];
-            result_index++;
-            second_index++;
-        }
-    }
-    return result;
-}
+*/
