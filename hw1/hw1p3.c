@@ -36,8 +36,12 @@ typedef enum {RED, GREEN, BLUE} color_t;
 
 // GLUT window IDs
 int upper_win, lower_win;
-typedef enum {PRESORT, SORTING, SORTED} state_t;
+typedef enum {NOT_SORTED, SORTING, SORTED} state_t;
 state_t state;
+state_t merged_state;
+
+int merge_counter = 0;
+int quick_counter = 0;
 
 // A marginally-clever debugging function that expends to a no-op
 // when NDEBUG is defined and otherwise prints its string formatting
@@ -71,6 +75,7 @@ void draw_upper_rectangle(void) ;                 // Display callback.
 void draw_lower_rectangle(void) ;                 // Display callback.
 void create_menu() ;
 
+void renderBitmapString( float x, float y, void *font, char *string) ;
 void draw_black() ;
 void swap(int *xs, int index_a, int index_b);
 int partition(int *xs, int m, int n);
@@ -87,7 +92,7 @@ int* merge_list;
 int* quick_list;
 
 int main(int argc, char **argv) {
-    state = PRESORT;
+    state = NOT_SORTED;
 
     // Make a list, list.
     list_size = DEFAULT_WIN_WIDTH/3;
@@ -116,7 +121,7 @@ int main(int argc, char **argv) {
     Sublist *initial_list = malloc(sizeof(Sublist));
     initial_list->start_index = 0;
     initial_list->end_index = list_size - 1;
-    push(quick_stack, initial_list); 
+    push(quick_stack, initial_list);
 
     // Initialize the drawing window.
     glutInitWindowSize(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT) ;
@@ -182,12 +187,12 @@ int partition(int *xs, int m, int n) {
 void quick_sort_iterate(stack356_t* stack) {
     debug("quick_sort_iterate");
     if (!stk_is_empty(stack)) {
-        debug("prepartition");
         Sublist *current_sublist = pop(stack);
-        debug("postpartition");
         int start_index = current_sublist->start_index;
         int end_index = current_sublist->end_index;
         int pivot_index = partition(quick_list, start_index, end_index);
+        // After partition increment quick_counter.
+        quick_counter++;
         // Create two sublists and push them on the stack.
         int left_start_index = start_index;
         int left_end_index = pivot_index - 1;
@@ -269,6 +274,8 @@ void merge_sort_iterate(stack356_t* stack, int(*compare)(int, int)) {
                     int* merged_array = malloc(merged_size * sizeof(int));
                     merge(cur_node->array, first_half_size, next_node->array,
                         second_half_size, merged_array, compare);
+                    // After merge increment merge_counter.
+                    merge_counter++;
                     Node* merged_node = make_node(merged_array, merged_size,
                         sorted);
                     push(stack, merged_node);
@@ -284,8 +291,8 @@ void merge_sort_iterate(stack356_t* stack, int(*compare)(int, int)) {
                 }
             } else {
                 // If stack is empty, then we're done.
-                debug("Changing state to SORTED");
-                state = SORTED;
+                debug("Changing merged_state to SORTED");
+                merged_state = SORTED;
                 // Copy the array back to original array.
                 cp_array(cur_node->array, merge_list, list_size);
             }
@@ -304,6 +311,8 @@ void draw_quick_sort() {
     win_width = glutGet(GLUT_WINDOW_WIDTH);
     win_height = glutGet(GLUT_WINDOW_HEIGHT);
 
+    renderBitmapString(20, 20, GLUT_BITMAP_HELVETICA_18, "Quick Sort");
+
     // Create the framebuffer, initialize to all zero (i.e., black).
     GLubyte fb[win_height][win_width][3] ;
     bzero(fb, (win_width*win_height*3)*sizeof(GLubyte)) ;
@@ -312,9 +321,6 @@ void draw_quick_sort() {
     // middle of the sort without any problems.
     // Display list from global list.
     // Go through list
-    debug("1hfkja");
-    print_array(quick_list, list_size);
-    debug("2hfkja");
     for (int elm = 0; elm < list_size; elm++) {
         int value = quick_list[elm];
         for (int height = 0; height < value; height++) {
@@ -347,7 +353,7 @@ void draw_merge_sort() {
     GLubyte fb[win_height][win_width][3] ;
     bzero(fb, (win_width*win_height*3)*sizeof(GLubyte)) ;
 
-    if (state == PRESORT || state == SORTED) {
+    if (merged_state == SORTED) {
         // Display list from global list.
         // Go through list
         for (int elm = 0; elm < list_size; elm++) {
@@ -357,7 +363,7 @@ void draw_merge_sort() {
             }
         }
     }
-    else if (state == SORTING) {
+    else if (merged_state == NOT_SORTED) {
         stack356_t* stack_copy = make_stack();
         // Iterate through the stack, for each Node, get the array, for each value in array, put a column on the screen of its value.
         int fb_col = 0;
@@ -397,7 +403,7 @@ void draw_merge_sort() {
  * Iterate once through both algorithms.
  */
 void iterate() {
-    if (state == PRESORT) {
+    if (state == NOT_SORTED) {
         debug("iterate: state = %d", state);
     }else if (state == SORTING) {
         debug("iterate: state = %d", state);
@@ -436,9 +442,12 @@ void process_menu(int option) {
     debug("process_menu with option: %d", option);
     switch (option) {
         case 1 :
-            // Begin sorting. Set state to 1.
+            // Begin sorting. Set state to SORTING.
             state = SORTING;
             debug("Changed state to %d", state);
+            merged_state = NOT_SORTED;
+            // Animate has started, remove the buttom.
+            glutRemoveMenuItem(1);
             break;
         case 0 :
             // Exit program.
@@ -525,3 +534,10 @@ void create_menu() {
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
+void renderBitmapString( float x, float y, void *font, char *string) {
+    char *c;
+    glWindowPos2s(100, 200);
+    for (c=string; *c != '\0'; c++) {
+    glutBitmapCharacter(font, *c);
+    }
+}
