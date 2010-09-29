@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "hw1utils.h"
-#include <stack356.h>
+#include "stack356.h"
 
 /** Sort an array of integers according to a supplied comparison function. The
  * elements of the array will be rearranged into non-decreasing order according
@@ -102,7 +102,8 @@ void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
             if (!stk_is_empty(stack)) {
                 // If stack isn't empty, get next_node and merge or swap.
                 Node* next_node = pop(stack);
-                // If next_node's sorted, merge them together; else switch them.
+                // If next_node's sorted, merge them together; else switch
+                // them.
                 if (next_node->state == sorted) {
                     // Merge them into a new node.
                     size_t first_half_size = cur_node->size;

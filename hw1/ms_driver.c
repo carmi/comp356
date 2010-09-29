@@ -5,8 +5,17 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "hw1utils.h"
 #include "hw1p12.h"
+#include "hw1utils.h"
+
+void print_array(int *array, size_t length) {
+    printf("[");
+    for (int i=0; i<length; i++){
+        printf(" %d", array[i]);
+        if ((i+1) < length) printf(",");
+    };
+    printf(" ]");
+}
 
 int main(int argc, char **argv) {
     // Create an array of random integers.

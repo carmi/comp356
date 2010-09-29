@@ -22,11 +22,6 @@ typedef struct _Node {
     int end_index;
 } Node;
 
-// Debugging Function Declarations
-void print_array(int *array, size_t length);
-void print_node(Node* node, size_t counter);
-void print_stack(stack356_t* stack);
-
 // Function Declarations
 int compare(int, int);
 void half(int *initial, int *first, size_t first_size, int *second,

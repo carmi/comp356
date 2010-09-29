@@ -21,7 +21,7 @@
     #include <GL/glut.h>
 #endif
 #include "hw1utils.h"
-#include <stack356.h>
+#include "stack356.h"
 
 #define MAX_STRING_LENGTH 256
 #define DEFAULT_WIN_WIDTH 800

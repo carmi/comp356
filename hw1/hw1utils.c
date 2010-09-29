@@ -6,64 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef NDEBUG
-#include <stdarg.h>
-#endif
-
-#ifdef __MACOSX__
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#include <GLUT/glut.h>
-#elif defined __LINUX__ || defined __CYGWIN__
-// #define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
-#endif
-
-#include <stack356.h>
 #include "hw1utils.h"
 
-// Debugging Functions
-void print_array(int *array, size_t length){
-    printf("[");
-    for (int i=0; i<length; i++){
-        printf(" %d", array[i]);
-        if ((i+1) < length) printf(",");
-    };
-    printf(" ]");
-}
-void print_node(Node* node, size_t counter) {
-    printf("\n------------------------Node---------------------------\n     Array: ");
-    print_array(node->array, node->size);
-    printf("\n#%d   Size: %d", (int)counter, (int)node->size);
-    if (node->state == sorted) printf("\n     State: sorted");
-    if (node->state == unsorted) printf("\n     State: unsorted");
-    printf("\n-------------------------------------------------------");
-    return;
-}
-void print_stack(stack356_t* stack) {
-    printf("\n*************************Printing Stack*******************\n");
-    stack356_t* copy = make_stack();
-    size_t counter = 1;
-    while (!stk_is_empty(stack)) {
-        // Move from stack to copy, printing each node.
-        Node* cur_node = pop(stack);
-        print_node(cur_node, counter);
-        push(copy, cur_node);
-        counter++;
-    }
-    while (!stk_is_empty(copy)) {
-        // Move back to stack.
-        Node* cur_node = pop(copy);
-        push(stack, cur_node);
-    }
-    printf("\n**********************************************************\n");
-    return;
-}
-
 // Utility Functions
-
 /**
  * compare - an integer comparison function. Returns a number < 0, 0, or a
  * number > 0 as per x < y, x = y, or x > y. 
