@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #ifndef NDEBUG
     #include <stdarg.h>
 #endif
@@ -35,6 +36,27 @@ typedef enum {RED, GREEN, BLUE} color_t;
 
 // GLUT window IDs
 int upper_win, lower_win;
+typedef enum {PRESORT, SORTING, SORTED} state_t;
+state_t state;
+
+// A marginally-clever debugging function that expends to a no-op
+// when NDEBUG is defined and otherwise prints its string formatting
+// arguments to stderr.
+#ifdef NDEBUG
+#define debug(fmt, ...) 
+#else
+void debug(const char* fmt, ...) {
+    va_list argptr ;
+    va_start(argptr, fmt) ;
+
+    char* fmt_newline ;
+    asprintf(&fmt_newline, "%s\n", fmt) ;
+    vfprintf(stderr, fmt_newline, argptr) ;
+    free(fmt_newline) ;
+}
+#endif
+
+
 
 // Stack Pointers
 stack356_t* merge_stack;
@@ -45,58 +67,72 @@ typedef struct Sublist {
     int end_index;
 } Sublist;
 
+void draw_upper_rectangle(void) ;                 // Display callback.
+void draw_lower_rectangle(void) ;                 // Display callback.
+
+void draw_black() ;
 void swap(int *xs, int index_a, int index_b);
 int partition(int *xs, int m, int n);
 void quick_sort_itr(int *xs, size_t size);
 void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int));
-int* merge(int *first, size_t first_size, int *second, size_t second_size,
-        int(*compare)(int, int));
+void draw_merge_sort(void);
+void iterate(void);
+void no_op(void);
+void process_menu(int option);
+
+size_t list_size;
+int* list;
 
 int main(int argc, char **argv) {
 
+    state = PRESORT;
     // Make a list.
-    size_t list_size = 50;
-    int* list = malloc(list_size*sizeof(int));
+    list_size = DEFAULT_WIN_WIDTH;
+    list = malloc(list_size * sizeof(int));
     for (int i=0; i<list_size; i++)
-        list[i] = RAND(-100, 100);
-
-
-
+        list[i] = RAND(0, DEFAULT_WIN_HEIGHT/2);
+    
+    print_array(list, list_size);
     // Setup the merge_stack for merge_sort.
     merge_stack = make_stack();
 
+    int* initial_array = malloc(list_size * sizeof(int));
+    cp_array(list, initial_array, list_size);
     // Put xs in a node and on the stack; then enter the processing loop.
-    Node* initial_node = make_node(xs, size, unsorted);
+    Node* initial_node = make_node(initial_array, list_size, unsorted);
     push(merge_stack, initial_node);
-
+    debug("Array initialized");
     // Initialize the drawing window.
     glutInitWindowSize(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT) ;
     glutInitWindowPosition(0, 0) ;
     glutInit(&argc, argv) ;
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB) ;
 
+
     // Create the main window, set display callback to a no-op.
     int main_win = glutCreateWindow("Visual Animation of Merge Sort and Quick Sort.") ;
-    glutDisplayFunc(no_op) ;
+    glutDisplayFunc(draw_black) ;
+
+    // Create a menu
+
+
     int win_width = glutGet(GLUT_WINDOW_WIDTH) ;
     int win_height = glutGet(GLUT_WINDOW_HEIGHT) ;
 
     // Create upper and lower subwindows, set appropriate display callbacks.
     upper_win = glutCreateSubWindow(main_win, 0, 0, win_width, win_height/2) ;
     glutDisplayFunc(draw_merge_sort) ;
+    create_menu();
     lower_win = glutCreateSubWindow(main_win, 0, win_height/2, win_width,
             win_height-win_height/2) ;
-    glutDisplayFunc(draw_quick_sort) ;
-
-    glutIdleFunc(iterate()) ;
+    glutDisplayFunc(draw_black) ;
+    create_menu();
 
     // Enter the main event loop.
-    create_menu();
+
+    glutIdleFunc(iterate) ;
     glutMainLoop() ;
-
     return EXIT_SUCCESS ;
-
-    
 }
 
 void swap(int *xs, int index_a, int index_b) {
@@ -146,7 +182,7 @@ void quick_sort_itr(int *xs, size_t size) {
                 Sublist *left_list = malloc(sizeof(Sublist));
                 left_list->start_index = left_start_index;
                 left_list->end_index = left_end_index;
-                push(callStack, left_list);
+                push(stack, left_list);
             }
             int right_start_index = pivot_index + 1;
             int right_end_index = end_index;
@@ -154,12 +190,13 @@ void quick_sort_itr(int *xs, size_t size) {
                 Sublist *right_list = malloc(sizeof(Sublist));
                 right_list->start_index = right_start_index;
                 right_list->end_index = right_end_index;
-                push(callStack, right_list);
+                push(stack, right_list);
             }
             free(current_sublist);
         }
     }
 }
+
 /**
  * An iterative implementation of merge sort. Sort an array of integers
  * according to a supplied comparison function. The elements of the array will
@@ -171,54 +208,58 @@ void quick_sort_itr(int *xs, size_t size) {
  * @param compare - the comparison function. compare(x, y) returns
  * a number < 0, 0, or a number > 0 as per x < y, x = y, or x > y.
  */
-// Do one iteration on the stack stack of merge sort.
-void merge_sort_iterate(stack356_t* stack, int(*compare)(int, int)) {
 
+void merge_sort_iterate(stack356_t* stack, int(*compare)(int, int)) {
+    debug("merge_sort_iterate");
     if (!stk_is_empty(stack)) {
+        //print_stack(stack);
         Node* cur_node = pop(stack);
-        
+        State cur_state = cur_node->state;
         // cur_node's state is unsorted, fake a recursive merge_sort
-        if (cur_node->state == unsorted) {
+        if (cur_state == unsorted) {
+            size_t cur_size = cur_node->size;
             // If length 0 or 1, change state to sorted and put back on stack.
-            if ((cur_node->size == 1) || cur_node->size == 0) {
+            if (cur_size == 1 || cur_size == 0) {
                 cur_node->state = sorted;
                 push(stack, cur_node);
             }
             else {
                 // Split and place back on stack.
                 // Make two new arrays, and fill them.
-                size_t middle = ((cur_node->size)/2);
-                int* first = malloc(middle*sizeof(int));
-                int* second = malloc(((cur_node->size)-middle)*sizeof(int));
-                half(cur_node->array, cur_node->size, first, second);
-
-                // Make two new nodes with those arrays and push.
-                Node* first_node = make_node(first, middle, unsorted);
+                size_t first_array_size = (cur_size / 2);
+                size_t second_array_size = (cur_size - first_array_size);
+                int* first = malloc(first_array_size * sizeof(int));
+                int* second = malloc(second_array_size * sizeof(int));
+                half(cur_node->array, first, first_array_size, second,
+                    second_array_size);
+                // Push new arrays on stack as nodes.
+                Node* first_node = make_node(first, first_array_size,
+                    unsorted);
                 push(stack, first_node);
 
-                Node* second_node = make_node(second, (cur_node->size-middle), unsorted);
+                Node* second_node = make_node(second, second_array_size,
+                    unsorted);
                 push(stack, second_node);
 
-                // Free cur_node aslong as it's not the last node on the stack.
-                // The last node on the stack should be freed by the caller.
-                if (!stk_is_empty(stack))
-                    free_node(cur_node);
+                free_node(cur_node);
             }
-        } else if (cur_node->state == sorted) {
+        } else if (cur_state == sorted) {
             if (!stk_is_empty(stack)) {
                 // If stack isn't empty, get next_node and merge or swap.
                 Node* next_node = pop(stack);
-                // If next node is sorted, merge them together; else switch them.
+                // If next_node's sorted, merge them together; else switch them.
                 if (next_node->state == sorted) {
                     // Merge them into a new node.
-                    int* merged_array = malloc((cur_node->size+next_node->size)*sizeof(int));
-                    merged_array = merge(cur_node->array, cur_node->size,
-                                         next_node->array, next_node->size,
-                                         compare);
-                    Node* merged_node = make_node(merged_array, (cur_node->size+next_node->size), sorted);
+                    size_t first_half_size = cur_node->size;
+                    size_t second_half_size = next_node->size;
+                    size_t merged_size = first_half_size + second_half_size;
+                    int* merged_array = malloc(merged_size * sizeof(int));
+                    merge(cur_node->array, first_half_size, next_node->array,
+                        second_half_size, merged_array, compare);
+                    Node* merged_node = make_node(merged_array, merged_size,
+                        sorted);
                     push(stack, merged_node);
                     
-                    //Free two old nodes
                     free_node(cur_node);
                     free_node(next_node);
                 } else if (next_node->state == unsorted) {
@@ -226,133 +267,92 @@ void merge_sort_iterate(stack356_t* stack, int(*compare)(int, int)) {
                     push(stack, cur_node);
                     push(stack, next_node);
                 } else {
-                    printf("Uh oh. We shouldn't be here");
+                    printf("Unrecognized state.");
                 }
             } else {
                 // If stack is empty, then we're done.
-                // Copy final arrive to address pointed to by xs, because we can't modify the value of xs.
-                //TODO I think this needs to be removed or changed.
-                //cp_array(cur_node->array, xs, cur_node->size);
-                //free_node(cur_node);
-                return;
+                debug("Changing state to SORTED");
+                state = SORTED;
             }
         } else {
-            printf("Uh oh. We shouldn't be here.");
+            printf("Unrecognized state.");
         }
     }
-    return;
 }
-
-/**
- * Merge - merge two integer arrays together and return a single array
- * consisting of their elements in non-decreasing order. It is a precondition
- * that each input array is already sorted in non-decreasing order.
- *
- * @param first - the first array; must be sorted in non-decreasing order.
- * @param first_size - the length of first.
- * @param second - the second array; must be sorted in non-decreasing order.
- * @param second_size - the length of second.
- * @param compare - the comparison function. compare(x, y) returns
- *          a number < 0, 0, or a number > 0 as per x < y, x = y, or x > y.
- *
- * @return int* - returns a pointer to the array of the two input lists merged together.
- */
-int* merge(int *first, size_t first_size, int *second, size_t second_size,
-        int(*compare)(int, int)) {
-    // Create a new array to hold the result of the merge.
-    int* result = malloc((first_size + second_size)*sizeof(int));
-    // Create indices to keep track of position in arrays
-    size_t result_index = 0;
-    size_t first_index = 0;
-    size_t second_index = 0;
-    while ((first_index < first_size) || (second_index < second_size))
-    {
-        if ((first_index < first_size) && (second_index < second_size))
-        {
-            // Compare first items of each array, and place smaller in result.
-            if (compare(first[first_index], second[second_index]) <= 0)
-            {
-                result[result_index] = first[first_index];
-                result_index++;
-                first_index++;
-            }
-            else
-            {
-                result[result_index] = second[second_index];
-                result_index++;
-                second_index++;
-            }
-        }
-        else if (first_index < first_size)
-        {
-            result[result_index] = first[first_index];
-            result_index++;
-            first_index++;
-        }
-        else if (second_index < second_size)
-        {
-            result[result_index] = second[second_index];
-            result_index++;
-            second_index++;
-        }
-    }
-    return result;
-}
-
 
 /**
  * Draw a visualization of the sorting method. This is done by iterating through the call stack and displaying each Node.
  * Assume values of array are smaller than win_height/2
  */
-void draw_merge_sort(void) {
+void draw_merge_sort() {
+    debug("draw_merge_sort");
+    win_width = glutGet(GLUT_WINDOW_WIDTH);
     win_height = glutGet(GLUT_WINDOW_HEIGHT);
 
     // Create the framebuffer, initialize to all zero (i.e., black).
     GLubyte fb[win_height][win_width][3] ;
     bzero(fb, (win_width*win_height*3)*sizeof(GLubyte)) ;
-
-    int fb_index = 0;
+    
+    // Go through list
+    for (int elm = 0; elm < list_size; elm++) {
+        int value = list[elm];
+        for (int height = 0; height < value; height++) {
+            fb[height][3*elm][1] = 255;
+        }
+    }
+    /*
+    int fb_col = 0;
+    stack356_t* stack_copy = make_stack();
     // Iterate through the stack, for each Node, get the array, for each value in array, put a column on the screen of its value.
     while (!stk_is_empty(merge_stack)) {
-        Node* cur_node = pop(stack)
-            for (int i=0; i<cur_node->size; i++) {
-                make_column(fb, fb_index, cur_node->array[i]);
+        Node* cur_node = pop(merge_stack);
+        for (int i=0; i<cur_node->size; i++) {
+            // Fill in framebuffer with a column representing the value.
+            for (int j = 0; j < cur_node->array[i]; j++) {
+                fb[fb_col][i][1] = 255;
+                fb_col++;
             }
+        }
         push(stack_copy, cur_node);
     }
     // Put stack back together from copy.
     while (!stk_is_empty(stack_copy)) {
-        push(stack, pop(stack_copy));
-    }
+        push(merge_stack, pop(stack_copy));
+    }*/
 
+    // Draw the pixels.  An alternative to WindowPos* is RasterPos*, but the
+    // latter takes into account the current model-view transformation, so
+    // doesn't seem appropriate.  We should probably always specify 
+    // GL_UNPACK_ALIGNMENT to be certain that we read the "next" row 
+    // of pixels correctly.
+    glWindowPos2s(0, 0) ;
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1) ;
+    glDrawPixels(win_width, win_height, GL_RGB, GL_UNSIGNED_BYTE, fb) ;
 
-    // Fill the framebuffer with the values of the stack pixels.
-    for (int h=win_height/3; h<2*win_height/3; ++h) {
-        for (int w=0; w<win_width/3; ++w) {
-            fb[h][(int)(win_width*left_pos)+w][color] = 255 ;
-        }
-    }
-
-/**
- * Make a column in the framebuffer fb to represent the value of the element at fb_index.
- */
-void make_column(fb, fb_index, value) {
-    for (int h=0; h < value; h++) {
-        fb[h][fb_index][0] = 255;
-    }
+    glFlush() ;
+    glutSwapBuffers() ;
 }
+
 
 /**
  * Iterate once through both algorithms.
  */
 void iterate() {
-    merge_sort_iterate(merge_stack, compare);
-    //quick_sort_iterate(quick_stack, compare);
+    if (state == PRESORT) {
+        debug("iterate: state = %d", state);
+    }else if (state == SORTING) {
+        debug("iterate: state = %d", state);
+        merge_sort_iterate(merge_stack, compare);
+        //quick_sort_iterate(quick_stack, compare);
 
-    glutSetWindow(upper_win) ;
-    glutPostRedisplay() ;
-    glutSetWindow(lower_win) ;
-    glutPostRedisplay() ;
+        glutSetWindow(upper_win) ;
+        glutPostRedisplay() ;
+        glutSetWindow(lower_win) ;
+        glutPostRedisplay() ;
+    }
+    else {
+        debug("iterate: state = %d", state);
+    }
 }
 
 /**
@@ -367,3 +367,99 @@ Sublist* make_sublist(int start_index, int end_index) {
     new_sublist->end_index = end_index;
     return new_sublist;
 }
+
+void no_op() {
+}
+
+void process_menu(int option) {
+    debug("process_menu with option: %d", option);
+    switch (option) {
+        case 1 :
+            // Begin sorting. Set state to 1.
+            state = SORTING;
+            debug("Changed state to %d", state);
+            break;
+        case 0 :
+            // Exit program.
+            debug("Exiting from menu", state);
+            exit(0);
+            break;
+    }
+}
+void draw_black() {
+    debug("draw_black") ;
+    win_width = glutGet(GLUT_WINDOW_WIDTH) ;
+    win_height = glutGet(GLUT_WINDOW_HEIGHT) ;
+
+    // Create the framebuffer, initialize to all zero (i.e., black).
+    GLubyte fb[win_height][win_width][3] ;
+    bzero(fb, (win_width*win_height*3)*sizeof(GLubyte)) ;
+
+    // Draw the pixels.  An alternative to WindowPos* is RasterPos*, but the
+    // latter takes into account the current model-view transformation, so
+    // doesn't seem appropriate.  We should probably always specify 
+    // GL_UNPACK_ALIGNMENT to be certain that we read the "next" row 
+    // of pixels correctly.
+    glWindowPos2s(0, 0) ;
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1) ;
+    glDrawPixels(win_width, win_height, GL_RGB, GL_UNSIGNED_BYTE, fb) ;
+
+    glFlush() ;
+
+    glutSwapBuffers() ;
+
+}
+
+
+void draw_rectangle(color_t color) {
+    debug("draw_rectangle(%d)", color) ;
+    win_width = glutGet(GLUT_WINDOW_WIDTH) ;
+    win_height = glutGet(GLUT_WINDOW_HEIGHT) ;
+
+    // Create the framebuffer, initialize to all zero (i.e., black).
+    GLubyte fb[win_height][win_width][3] ;
+    bzero(fb, (win_width*win_height*3)*sizeof(GLubyte)) ;
+
+    // Fill the framebuffer with the rectangle pixels.
+    for (int h=win_height/3; h<2*win_height/3; ++h) {
+        for (int w=0; w<win_width/3; ++w) {
+            fb[h][(int)(win_width)+w][color] = 255 ;
+        }
+    }
+
+    // Draw the pixels.  An alternative to WindowPos* is RasterPos*, but the
+    // latter takes into account the current model-view transformation, so
+    // doesn't seem appropriate.  We should probably always specify 
+    // GL_UNPACK_ALIGNMENT to be certain that we read the "next" row 
+    // of pixels correctly.
+    glWindowPos2s(0, 0) ;
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1) ;
+    glDrawPixels(win_width, win_height, GL_RGB, GL_UNSIGNED_BYTE, fb) ;
+
+    glFlush() ;
+
+    glutSwapBuffers() ;
+
+}
+
+/** Handle display events for the upper window.  Draw a red rectangle
+ *  using draw_rectangle.
+ */
+void draw_upper_rectangle() {
+    draw_rectangle(RED) ;
+}
+
+/** Handle display events for the upper window.  Draw a green rectangle
+ *  using draw_rectangle.
+ */
+void draw_lower_rectangle() {
+    draw_rectangle(GREEN) ;
+}
+
+void create_menu() {
+    int menu = glutCreateMenu(process_menu);
+    glutAddMenuEntry("Animate sorting.", 1);
+    glutAddMenuEntry("Quit!", 0);
+    glutAttachMenu(GLUT_RIGHT_BUTTON);
+}
+
