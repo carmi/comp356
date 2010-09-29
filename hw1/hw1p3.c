@@ -27,22 +27,22 @@
 // Defaults for the window.
 #define DEFAULT_WIN_WIDTH 800
 #define DEFAULT_WIN_HEIGHT 600
-int win_width, win_height ;
+int win_width, win_height;
 
 // What color to draw.  Here we're doing something bad:  taking advantage
 // of the fact that enumerated type elements are ints starting at 0.
-typedef enum {RED, GREEN, BLUE} color_t ;
+typedef enum {RED, GREEN, BLUE} color_t;
 
 // GLUT window IDs
-int upper_win, lower_win ;
+int upper_win, lower_win;
 
 // Stack Pointers
 stack356_t* merge_stack;
 //stack356_t* quick_stack;
 
 typedef struct Sublist {
-    int startIndex;
-    int endIndex;
+    int start_index;
+    int end_index;
 } Sublist;
 
 void swap(int *xs, int index_a, int index_b);
@@ -51,7 +51,6 @@ void quick_sort_itr(int *xs, size_t size);
 void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int));
 int* merge(int *first, size_t first_size, int *second, size_t second_size,
         int(*compare)(int, int));
-
 
 int main(int argc, char **argv) {
 
@@ -107,6 +106,7 @@ void swap(int *xs, int index_a, int index_b) {
 }
 
 // partitions the sublist xs[m..n] around a pivot that's then returned
+// the return value is with regards to xs not xs[m...n]
 int partition(int *xs, int m, int n) {
     if (n - m < 1) return 0;
     else {
@@ -126,34 +126,34 @@ int partition(int *xs, int m, int n) {
 }
 
 void quick_sort_itr(int *xs, size_t size) {
-    if (size <= 1) {
-        printf("Array too small (already sorted).\n");
-    }
+    if (size == 1 || size == 0)
+        return;
     else {
-        stack356_t *callStack = make_stack();
+        stack356_t *stack = make_stack();
         Sublist *initial_list = malloc(sizeof(Sublist));        
-        initial_list->startIndex = 0;
-        initial_list->endIndex = size - 1;
-        push(callStack, initial_list);
-        while (!stk_is_empty(callStack)) {
-            Sublist *current_sublist = pop(callStack);
-            int startIndex = current_sublist->startIndex;
-            int endIndex = current_sublist->endIndex;
-            int pivot_index = partition(xs, startIndex, endIndex);
-            int leftStartIndex = startIndex;
-            int leftEndIndex = pivot_index - 1;
-            if (leftEndIndex - leftStartIndex >= 1) {
+        initial_list->start_index = 0;
+        initial_list->end_index = size - 1;
+        push(stack, initial_list);
+        while (!stk_is_empty(stack)) {
+            Sublist *current_sublist = pop(stack);
+            int start_index = current_sublist->start_index;
+            int end_index = current_sublist->end_index;
+            int pivot_index = partition(xs, start_index, end_index);
+            // Create two sublists and push them on the stack.
+            int left_start_index = start_index;
+            int left_end_index = pivot_index - 1;
+            if (left_end_index - left_start_index >= 1) {
                 Sublist *left_list = malloc(sizeof(Sublist));
-                left_list->startIndex = leftStartIndex;
-                left_list->endIndex = leftEndIndex;
+                left_list->start_index = left_start_index;
+                left_list->end_index = left_end_index;
                 push(callStack, left_list);
             }
-            int rightStartIndex = pivot_index + 1;
-            int rightEndIndex = endIndex;
-            if (rightEndIndex - rightStartIndex >= 1) {
+            int right_start_index = pivot_index + 1;
+            int right_end_index = end_index;
+            if (right_end_index - right_start_index >= 1) {
                 Sublist *right_list = malloc(sizeof(Sublist));
-                right_list->startIndex = rightStartIndex;
-                right_list->endIndex = rightEndIndex;
+                right_list->start_index = right_start_index;
+                right_list->end_index = right_end_index;
                 push(callStack, right_list);
             }
             free(current_sublist);
@@ -353,4 +353,17 @@ void iterate() {
     glutPostRedisplay() ;
     glutSetWindow(lower_win) ;
     glutPostRedisplay() ;
+}
+
+/**
+ * make_sublist - creates a new Sublist and returns a pointer to it.
+ * @param startIndex - the index of the original list at which sublist starts
+ * @param endIndex - the index of the original list at which the sublist ends
+ * @returns - returns a pointer to the newly created Sublist
+ */
+Sublist* make_sublist(int start_index, int end_index) {
+    Sublist* new_sublist = malloc(sizeof(Sublist));
+    new_sublist->start_index = start_index;
+    new_sublist->end_index = end_index;
+    return new_sublist;
 }
