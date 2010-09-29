@@ -1,3 +1,26 @@
+/*
+Problem 4
+The method described wouldn't work because of how display callbacks are
+normally handled in GLUT. It is assumed that the program is maintaining some
+sort of state that represents the current array being merge- or quicksorted.
+This state has to be updated by the method that is modifying that array.
+If a recursive method were to be used, a method call somewhere down the
+call tree would not be able to update the state, since that method call only
+has information about the current sub-array being sorted.
+
+For example, a quicksort called on the left side of the original array
+will be able to partition the array, but it doesn't know what part of the
+original array it just partitioned. Thus, it can't accurately modify the 
+original state to be redisplayed.
+
+However, we could conceivably pass in more state in the form of indices
+so that the recursive method could know which part of the array it's working
+on, and redisplay appropriately. This is essentially what our iterative
+methods in this program are doing, aside from simulating the call-stack used
+in recursive approaches.
+*/
+
+
 /** @file hw1p3.c
  *  @brief An application that provides a visual animation of merge sort and
  *  quick sort.
