@@ -258,7 +258,7 @@ void draw_mergesort_window(void) {
     glRasterPos2f(-0.95f, -0.75f);
     char counter[MAX_STRING_LENGTH];
     sprintf(counter, "Merges: %d", mergesort_counter);
-    drawString(counter, GLUT_BITMAP_HELVETICA_10);
+    drawString(counter, GLUT_BITMAP_8_BY_13);
     
     glutSwapBuffers();
 }
@@ -292,7 +292,7 @@ void draw_quicksort_window(void) {
     glRasterPos2f(-0.95f, -0.75f);
     char counter[MAX_STRING_LENGTH];
     sprintf(counter, "Partitions: %d", quicksort_counter);
-    drawString(counter, GLUT_BITMAP_HELVETICA_10);
+    drawString(counter, GLUT_BITMAP_8_BY_13);
     
     glutSwapBuffers();
 }
