@@ -144,7 +144,8 @@ void free_node(Node *node) {
  * @param compare - the comparison function. compare(x, y) returns
  *          a number < 0, 0, or a number > 0 as per x < y, x = y, or x > y.
  *
- * @return int* - returns a pointer to the array of the two input lists merged together.
+ * @return int* - returns a pointer to the array of the two input lists merged
+ * together.
  */
 void merge(int *first, size_t first_size, int *second, size_t second_size,
         int* result, int(*compare)(int, int)) {

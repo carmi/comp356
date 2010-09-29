@@ -22,14 +22,17 @@ typedef struct _Node {
     int end_index;
 } Node;
 
+// Debugging Function Declarations
+void print_array(int *array, size_t length);
+void print_node(Node* node, size_t counter);
+void print_stack(stack356_t* stack);
+
+// Function Declarations
 int compare(int, int);
 void half(int *initial, int *first, size_t first_size, int *second,
     size_t second_size);
 void cp_array(int* src, int* dest, size_t size);
 Node* make_node(int *array, size_t size, State state);
 void free_node(Node *node);
-void print_array(int *array, size_t length);
-void print_node(Node* node, size_t counter);
-void print_stack(stack356_t* stack);
 void merge(int *first, size_t first_size, int *second, size_t second_size,
         int* result, int(*compare)(int, int));
