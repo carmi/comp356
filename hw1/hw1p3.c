@@ -36,8 +36,8 @@ int main_win, upper_win, lower_win;
 bool in_intro;
 
 // Lists that will be displayed, and their two properties.
-int* xs_mergesort;
-int* xs_quicksort;
+int *xs_mergesort;
+int *xs_quicksort;
 int xs_highest;
 int xs_size;
 
@@ -61,7 +61,7 @@ void draw_main_window(void);
 void draw_mergesort_window(void);
 void draw_quicksort_window(void);
 void update_lists(void);
-void drawString(char *s);
+void drawString(char *s, void* font);
 int* generate_random_list();
 
 int main(int argc, char **argv) {
@@ -160,7 +160,7 @@ void mymenu(int value) {
         
         // push onto the mergesort stack
         mergesort_stack = make_stack();
-        int* initial_array = malloc(xs_size * sizeof(int));
+        int *initial_array = malloc(xs_size * sizeof(int));
         cp_array(xs_mergesort, initial_array, xs_size);
         Node *initial_node = make_node(initial_array, xs_size, unsorted);
         initial_node->start_index = 0;
@@ -215,7 +215,7 @@ void draw_main_window(void) {
         glColor3f(1.0f, 1.0f, 1.0f);
         glRasterPos2f(-0.9f, -0.85f);
         char msg[MAX_STRING_LENGTH] = "Welcome. Click anywhere to begin.";
-        drawString(msg);
+        drawString(msg, GLUT_BITMAP_HELVETICA_18);
     }
     
     glutSwapBuffers();
@@ -238,11 +238,17 @@ void draw_mergesort_window(void) {
             fb[h][(int)w][0] = 255;
         }
     }
-    glWindowPos2s(0, 0) ;
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1) ;
+    glWindowPos2s(0, 0);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glDrawPixels(win_width, upper_win_height, GL_RGB, GL_UNSIGNED_BYTE, fb);
     
     glFlush();
+    
+    // text
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glRasterPos2f(-0.9f, -0.85f);
+    char msg[MAX_STRING_LENGTH] = "Welcome. Click anywhere to begin.";
+    drawString(msg, GLUT_BITMAP_HELVETICA_10);
     
     glutSwapBuffers();
 }
@@ -261,8 +267,8 @@ void draw_quicksort_window(void) {
             fb[h][(int)w][1] = 255;
         }
     }
-    glWindowPos2s(0, 0) ;
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1) ;
+    glWindowPos2s(0, 0);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glDrawPixels(win_width, lower_win_height, GL_RGB, GL_UNSIGNED_BYTE, fb);
     
     glFlush();
@@ -281,7 +287,7 @@ void update_lists(void) {
     bool performed_a_merge = false;
     // if mergesort isn't finished, perform a step of it.
     if (!stk_is_empty(mergesort_stack)) {
-        Node* cur_node = pop(mergesort_stack);
+        Node *cur_node = pop(mergesort_stack);
         State cur_state = cur_node->state;
         if (cur_state == unsorted) {
             size_t cur_size = cur_node->size;
@@ -295,18 +301,18 @@ void update_lists(void) {
                 // Make two new arrays, and fill them.
                 size_t first_array_size = (cur_size / 2);
                 size_t second_array_size = (cur_size - first_array_size);
-                int* first = malloc(first_array_size * sizeof(int));
-                int* second = malloc(second_array_size * sizeof(int));
+                int *first = malloc(first_array_size * sizeof(int));
+                int *second = malloc(second_array_size * sizeof(int));
                 half(cur_node->array, first, first_array_size, second,
                     second_array_size);
                 // Push new arrays on stack as nodes.
-                Node* first_node = make_node(first, first_array_size,
+                Node *first_node = make_node(first, first_array_size,
                     unsorted);
                 int cur_start_index = cur_node->start_index;
                 first_node->start_index = cur_start_index;
                 first_node->end_index = cur_start_index + first_array_size - 1;
                 push(mergesort_stack, first_node);
-                Node* second_node = make_node(second, second_array_size,
+                Node *second_node = make_node(second, second_array_size,
                     unsorted);
                 second_node->start_index = cur_start_index + first_array_size;
                 second_node->end_index = cur_node->end_index;
@@ -317,7 +323,7 @@ void update_lists(void) {
         } else if (cur_state == sorted) {
             if (!stk_is_empty(mergesort_stack)) {
                 // If stack isn't empty, get next_node and merge or swap.
-                Node* next_node = pop(mergesort_stack);
+                Node *next_node = pop(mergesort_stack);
                 // If next_node's sorted, merge them together; else switch
                 // them.
                 if (next_node->state == sorted) {
@@ -325,10 +331,10 @@ void update_lists(void) {
                     size_t first_half_size = cur_node->size;
                     size_t second_half_size = next_node->size;
                     size_t merged_size = first_half_size + second_half_size;
-                    int* merged_array = malloc(merged_size * sizeof(int));
+                    int *merged_array = malloc(merged_size * sizeof(int));
                     merge(cur_node->array, first_half_size, next_node->array,
                         second_half_size, merged_array, compare);
-                    Node* merged_node = make_node(merged_array, merged_size,
+                    Node *merged_node = make_node(merged_array, merged_size,
                         sorted);
                     merged_node->start_index = cur_node->start_index;
                     merged_node->end_index = next_node->end_index;
@@ -403,16 +409,16 @@ void update_lists(void) {
     }
 }
 
-// Draws the string specified in char array s.
-void drawString(char *s) {
+// Draws the string specified in char array s, using font.
+void drawString(char *s, void *font) {
     for (int i = 0; i < strlen(s); i++)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, s[i]);
+        glutBitmapCharacter(font, s[i]);
 }
 
 // Generates a malloc'd random list and returns it.
 int* generate_random_list() {
     xs_size = win_width;
-    int* xs = malloc(xs_size * sizeof(int));
+    int *xs = malloc(xs_size * sizeof(int));
     xs_highest = 0;
     for (int i = 0; i < xs_size; i++) {
         int random = RAND(0, 1000);

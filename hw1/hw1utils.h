@@ -26,8 +26,8 @@ typedef struct _Node {
 int compare(int, int);
 void half(int *initial, int *first, size_t first_size, int *second,
     size_t second_size);
-void cp_array(int* src, int* dest, size_t size);
+void cp_array(int *src, int *dest, size_t size);
 Node* make_node(int *array, size_t size, State state);
 void free_node(Node *node);
 void merge(int *first, size_t first_size, int *second, size_t second_size,
-        int* result, int(*compare)(int, int));
+        int *result, int(*compare)(int, int));

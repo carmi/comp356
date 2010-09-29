@@ -26,8 +26,8 @@ void merge_sort_rec(int *xs, size_t size, int(*compare)(int, int)) {
     // Recursive case: divide into two parts and recursively sort list.
     size_t first_array_size = size/2;
     size_t second_array_size = size - first_array_size;
-    int* first = malloc(first_array_size * sizeof(int));
-    int* second = malloc(second_array_size * sizeof(int));
+    int *first = malloc(first_array_size * sizeof(int));
+    int *second = malloc(second_array_size * sizeof(int));
     
     half(xs, first, first_array_size, second, second_array_size);
 
@@ -59,16 +59,16 @@ void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
     stack356_t* stack = make_stack();
 
     // Copy xs to an array we can free and play with.
-    int* initial_array = malloc(size*sizeof(int));
+    int *initial_array = malloc(size*sizeof(int));
     cp_array(xs, initial_array, size);
 
     // Put initial_array in a node and on the stack; enter the processing loop.
-    Node* initial_node = make_node(initial_array, size, unsorted);
+    Node *initial_node = make_node(initial_array, size, unsorted);
     push(stack, initial_node);
 
     while (!stk_is_empty(stack)) {
         //print_stack(stack);
-        Node* cur_node = pop(stack);
+        Node *cur_node = pop(stack);
         State cur_state = cur_node->state;
         // cur_node's state is unsorted, fake a recursive merge_sort
         if (cur_state == unsorted) {
@@ -83,16 +83,16 @@ void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
                 // Make two new arrays, and fill them.
                 size_t first_array_size = (cur_size / 2);
                 size_t second_array_size = (cur_size - first_array_size);
-                int* first = malloc(first_array_size * sizeof(int));
-                int* second = malloc(second_array_size * sizeof(int));
+                int *first = malloc(first_array_size * sizeof(int));
+                int *second = malloc(second_array_size * sizeof(int));
                 half(cur_node->array, first, first_array_size, second,
                     second_array_size);
                 // Push new arrays on stack as nodes.
-                Node* first_node = make_node(first, first_array_size,
+                Node *first_node = make_node(first, first_array_size,
                     unsorted);
                 push(stack, first_node);
 
-                Node* second_node = make_node(second, second_array_size,
+                Node *second_node = make_node(second, second_array_size,
                     unsorted);
                 push(stack, second_node);
 
@@ -101,7 +101,7 @@ void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
         } else if (cur_state == sorted) {
             if (!stk_is_empty(stack)) {
                 // If stack isn't empty, get next_node and merge or swap.
-                Node* next_node = pop(stack);
+                Node *next_node = pop(stack);
                 // If next_node's sorted, merge them together; else switch
                 // them.
                 if (next_node->state == sorted) {
@@ -109,10 +109,10 @@ void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int)) {
                     size_t first_half_size = cur_node->size;
                     size_t second_half_size = next_node->size;
                     size_t merged_size = first_half_size + second_half_size;
-                    int* merged_array = malloc(merged_size * sizeof(int));
+                    int *merged_array = malloc(merged_size * sizeof(int));
                     merge(cur_node->array, first_half_size, next_node->array,
                         second_half_size, merged_array, compare);
-                    Node* merged_node = make_node(merged_array, merged_size,
+                    Node *merged_node = make_node(merged_array, merged_size,
                         sorted);
                     push(stack, merged_node);
                     

@@ -46,7 +46,7 @@ void half(int *initial, int *first, size_t first_size, int *second,
  * @param size - the number of elements to be copied, must not be greater than
  * the size of src or dest.
  */
-void cp_array(int* src, int* dest, size_t size) {
+void cp_array(int *src, int *dest, size_t size) {
     for (size_t i = 0; i < size; i++) {
         dest[i] = src[i];
     }
@@ -60,7 +60,7 @@ void cp_array(int* src, int* dest, size_t size) {
  * @returns - returns a pointer to the newly created Node.
  */
 Node* make_node(int *array, size_t size, State state) {
-    Node* new_node = malloc(sizeof(Node));
+    Node *new_node = malloc(sizeof(Node));
     new_node->array = array;
     new_node->size = size;
     new_node->state = state;
@@ -78,7 +78,7 @@ void free_node(Node *node) {
 }
 
 /**
- * Merge - merge two integer arrays together and return a single array
+ * Merge - merge two integer arrays together into a single array
  * consisting of their elements in non-decreasing order. It is a precondition
  * that each input array is already sorted in non-decreasing order.
  *
@@ -86,14 +86,12 @@ void free_node(Node *node) {
  * @param first_size - the length of first.
  * @param second - the second array; must be sorted in non-decreasing order.
  * @param second_size - the length of second.
+ * @param result - int array to merge first and second into.
  * @param compare - the comparison function. compare(x, y) returns
  *          a number < 0, 0, or a number > 0 as per x < y, x = y, or x > y.
- *
- * @return int* - returns a pointer to the array of the two input lists merged
- * together.
  */
 void merge(int *first, size_t first_size, int *second, size_t second_size,
-        int* result, int(*compare)(int, int)) {
+        int *result, int(*compare)(int, int)) {
     size_t result_size = first_size + second_size;
     size_t first_index = 0;
     size_t second_index = 0;
