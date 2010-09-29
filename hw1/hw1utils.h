@@ -18,6 +18,8 @@ typedef struct _Node {
     int* array;
     size_t size;
     State state;
+    int start_index;
+    int end_index;
 } Node;
 
 int compare(int, int);
