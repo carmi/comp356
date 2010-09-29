@@ -41,6 +41,10 @@ int *xs_quicksort;
 int xs_highest;
 int xs_size;
 
+// Counters (for text output).
+int mergesort_counter;
+int quicksort_counter;
+
 // Stacks our algorithms will use.
 stack356_t *quicksort_stack;
 stack356_t *mergesort_stack;
@@ -154,6 +158,7 @@ int partition(int *xs, int m, int n, int(*compare)(int, int)) {
  */
 void mymenu(int value) {
     if (value == 1) {
+        mergesort_counter = 0; quicksort_counter = 0;
         xs_mergesort = generate_random_list();
         xs_quicksort = malloc(xs_size * sizeof(int));
         cp_array(xs_mergesort, xs_quicksort, xs_size);
@@ -246,9 +251,14 @@ void draw_mergesort_window(void) {
     
     // text
     glColor3f(1.0f, 1.0f, 1.0f);
-    glRasterPos2f(-0.9f, -0.85f);
-    char msg[MAX_STRING_LENGTH] = "Welcome. Click anywhere to begin.";
-    drawString(msg, GLUT_BITMAP_HELVETICA_10);
+    glRasterPos2f(-0.95f, 0.75f);
+    char label[MAX_STRING_LENGTH] = "Mergesort";
+    drawString(label, GLUT_BITMAP_HELVETICA_18);
+    
+    glRasterPos2f(-0.95f, -0.75f);
+    char counter[MAX_STRING_LENGTH];
+    sprintf(counter, "Merges: %d", mergesort_counter);
+    drawString(counter, GLUT_BITMAP_HELVETICA_10);
     
     glutSwapBuffers();
 }
@@ -264,7 +274,7 @@ void draw_quicksort_window(void) {
         int col_height = lower_win_height * (xs_quicksort[(int)pos] /
          (double)xs_highest);
         for (int h = 0; h < col_height; h++) {
-            fb[h][(int)w][1] = 255;
+            fb[h][(int)w][2] = 255;
         }
     }
     glWindowPos2s(0, 0);
@@ -272,6 +282,17 @@ void draw_quicksort_window(void) {
     glDrawPixels(win_width, lower_win_height, GL_RGB, GL_UNSIGNED_BYTE, fb);
     
     glFlush();
+    
+    // text
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glRasterPos2f(-0.95f, 0.75f);
+    char label[MAX_STRING_LENGTH] = "Quicksort";
+    drawString(label, GLUT_BITMAP_HELVETICA_18);
+    
+    glRasterPos2f(-0.95f, -0.75f);
+    char counter[MAX_STRING_LENGTH];
+    sprintf(counter, "Partitions: %d", quicksort_counter);
+    drawString(counter, GLUT_BITMAP_HELVETICA_10);
     
     glutSwapBuffers();
 }
@@ -358,6 +379,7 @@ void update_lists(void) {
         // If we performed a merge, the newly merged element should be at the
         // top of the stack.
         if (performed_a_merge) {
+            mergesort_counter++;
             Node *mergedNode = peek(mergesort_stack);
             int *cur_array = mergedNode->array;
             int start_index = mergedNode->start_index;
@@ -402,6 +424,7 @@ void update_lists(void) {
                 push(quicksort_stack, right_list);
             }
             free(current_sublist);
+            quicksort_counter++;
         }
         // Partition happens at every step, so we'll always display.
         glutSetWindow(lower_win);
