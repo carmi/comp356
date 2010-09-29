@@ -7,21 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef NDEBUG
-#include <stdarg.h>
-#endif
-
-#ifdef __MACOSX__
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#include <GLUT/glut.h>
-#elif defined __LINUX__ || defined __CYGWIN__
-// #define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
-#endif
-
 #include "hw1utils.h"
 #include <stack356.h>
 
