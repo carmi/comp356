@@ -60,7 +60,7 @@ void debug(const char* fmt, ...) {
 
 // Stack Pointers
 stack356_t* merge_stack;
-//stack356_t* quick_stack;
+stack356_t* quick_stack;
 
 typedef struct Sublist {
     int start_index;
@@ -69,39 +69,55 @@ typedef struct Sublist {
 
 void draw_upper_rectangle(void) ;                 // Display callback.
 void draw_lower_rectangle(void) ;                 // Display callback.
+void create_menu() ;
 
 void draw_black() ;
 void swap(int *xs, int index_a, int index_b);
 int partition(int *xs, int m, int n);
-void quick_sort_itr(int *xs, size_t size);
-void merge_sort_itr(int *xs, size_t size, int(*compare)(int, int));
+void draw_quick_sort();
+void quick_sort_iterate(stack356_t* stack) ;
 void draw_merge_sort(void);
 void iterate(void);
 void no_op(void);
 void process_menu(int option);
 
+//Global Lists
 size_t list_size;
-int* list;
+int* merge_list;
+int* quick_list;
 
 int main(int argc, char **argv) {
-
     state = PRESORT;
-    // Make a list.
-    list_size = DEFAULT_WIN_WIDTH;
-    list = malloc(list_size * sizeof(int));
+
+    // Make a list, list.
+    list_size = DEFAULT_WIN_WIDTH/3;
+    int* list = malloc(list_size * sizeof(int));
     for (int i=0; i<list_size; i++)
-        list[i] = RAND(0, DEFAULT_WIN_HEIGHT/2);
+        list[i] = RAND(0, DEFAULT_WIN_HEIGHT/4);
     
-    print_array(list, list_size);
+    // Setup Merge Sort and Quick Sort
+    merge_list = malloc(list_size * sizeof(int));
+    cp_array(list, merge_list, list_size);
     // Setup the merge_stack for merge_sort.
     merge_stack = make_stack();
 
     int* initial_array = malloc(list_size * sizeof(int));
-    cp_array(list, initial_array, list_size);
+    cp_array(merge_list, initial_array, list_size);
     // Put xs in a node and on the stack; then enter the processing loop.
     Node* initial_node = make_node(initial_array, list_size, unsorted);
     push(merge_stack, initial_node);
-    debug("Array initialized");
+
+    // Setup Quick Sort
+    quick_list = malloc(list_size * sizeof(int));
+    cp_array(list, quick_list, list_size);
+
+
+    quick_stack = make_stack();
+    Sublist *initial_list = malloc(sizeof(Sublist));
+    initial_list->start_index = 0;
+    initial_list->end_index = list_size - 1;
+    push(quick_stack, initial_list); 
+
     // Initialize the drawing window.
     glutInitWindowSize(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT) ;
     glutInitWindowPosition(0, 0) ;
@@ -125,7 +141,7 @@ int main(int argc, char **argv) {
     create_menu();
     lower_win = glutCreateSubWindow(main_win, 0, win_height/2, win_width,
             win_height-win_height/2) ;
-    glutDisplayFunc(draw_black) ;
+    glutDisplayFunc(draw_quick_sort) ;
     create_menu();
 
     // Enter the main event loop.
@@ -136,6 +152,7 @@ int main(int argc, char **argv) {
 }
 
 void swap(int *xs, int index_a, int index_b) {
+    debug("swap");
     int tmp = xs[index_a];
     xs[index_a] = xs[index_b];
     xs[index_b] = tmp;
@@ -144,6 +161,7 @@ void swap(int *xs, int index_a, int index_b) {
 // partitions the sublist xs[m..n] around a pivot that's then returned
 // the return value is with regards to xs not xs[m...n]
 int partition(int *xs, int m, int n) {
+    debug("partition");
     if (n - m < 1) return 0;
     else {
         int init_pivot_index = m;
@@ -161,40 +179,35 @@ int partition(int *xs, int m, int n) {
     }
 }
 
-void quick_sort_itr(int *xs, size_t size) {
-    if (size == 1 || size == 0)
-        return;
-    else {
-        stack356_t *stack = make_stack();
-        Sublist *initial_list = malloc(sizeof(Sublist));        
-        initial_list->start_index = 0;
-        initial_list->end_index = size - 1;
-        push(stack, initial_list);
-        while (!stk_is_empty(stack)) {
-            Sublist *current_sublist = pop(stack);
-            int start_index = current_sublist->start_index;
-            int end_index = current_sublist->end_index;
-            int pivot_index = partition(xs, start_index, end_index);
-            // Create two sublists and push them on the stack.
-            int left_start_index = start_index;
-            int left_end_index = pivot_index - 1;
-            if (left_end_index - left_start_index >= 1) {
-                Sublist *left_list = malloc(sizeof(Sublist));
-                left_list->start_index = left_start_index;
-                left_list->end_index = left_end_index;
-                push(stack, left_list);
-            }
-            int right_start_index = pivot_index + 1;
-            int right_end_index = end_index;
-            if (right_end_index - right_start_index >= 1) {
-                Sublist *right_list = malloc(sizeof(Sublist));
-                right_list->start_index = right_start_index;
-                right_list->end_index = right_end_index;
-                push(stack, right_list);
-            }
-            free(current_sublist);
+void quick_sort_iterate(stack356_t* stack) {
+    debug("quick_sort_iterate");
+    if (!stk_is_empty(stack)) {
+        debug("prepartition");
+        Sublist *current_sublist = pop(stack);
+        debug("postpartition");
+        int start_index = current_sublist->start_index;
+        int end_index = current_sublist->end_index;
+        int pivot_index = partition(quick_list, start_index, end_index);
+        // Create two sublists and push them on the stack.
+        int left_start_index = start_index;
+        int left_end_index = pivot_index - 1;
+        if (left_end_index - left_start_index >= 1) {
+            Sublist *left_list = malloc(sizeof(Sublist));
+            left_list->start_index = left_start_index;
+            left_list->end_index = left_end_index;
+            push(stack, left_list);
         }
+        int right_start_index = pivot_index + 1;
+        int right_end_index = end_index;
+        if (right_end_index - right_start_index >= 1) {
+            Sublist *right_list = malloc(sizeof(Sublist));
+            right_list->start_index = right_start_index;
+            right_list->end_index = right_end_index;
+            push(stack, right_list);
+        }
+        free(current_sublist);
     }
+    debug("endif");
 }
 
 /**
@@ -273,11 +286,52 @@ void merge_sort_iterate(stack356_t* stack, int(*compare)(int, int)) {
                 // If stack is empty, then we're done.
                 debug("Changing state to SORTED");
                 state = SORTED;
+                // Copy the array back to original array.
+                cp_array(cur_node->array, merge_list, list_size);
             }
         } else {
             printf("Unrecognized state.");
         }
     }
+}
+
+/**
+ * Draw a visualization of the sorting method. This is done by iterating through the call stack and displaying each Node.
+ * Assume values of array are smaller than win_height/2
+ */
+void draw_quick_sort() {
+    debug("draw_quick_sort");
+    win_width = glutGet(GLUT_WINDOW_WIDTH);
+    win_height = glutGet(GLUT_WINDOW_HEIGHT);
+
+    // Create the framebuffer, initialize to all zero (i.e., black).
+    GLubyte fb[win_height][win_width][3] ;
+    bzero(fb, (win_width*win_height*3)*sizeof(GLubyte)) ;
+
+    // Because quick_sort is in_place, we can display the real list in the
+    // middle of the sort without any problems.
+    // Display list from global list.
+    // Go through list
+    debug("1hfkja");
+    print_array(quick_list, list_size);
+    debug("2hfkja");
+    for (int elm = 0; elm < list_size; elm++) {
+        int value = quick_list[elm];
+        for (int height = 0; height < value; height++) {
+            fb[height][3*elm][0] = 255;
+        }
+    }
+    // Draw the pixels.  An alternative to WindowPos* is RasterPos*, but the
+    // latter takes into account the current model-view transformation, so
+    // doesn't seem appropriate.  We should probably always specify 
+    // GL_UNPACK_ALIGNMENT to be certain that we read the "next" row 
+    // of pixels correctly.
+    glWindowPos2s(0, 0) ;
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1) ;
+    glDrawPixels(win_width, win_height, GL_RGB, GL_UNSIGNED_BYTE, fb) ;
+
+    glFlush() ;
+    glutSwapBuffers() ;
 }
 
 /**
@@ -292,33 +346,38 @@ void draw_merge_sort() {
     // Create the framebuffer, initialize to all zero (i.e., black).
     GLubyte fb[win_height][win_width][3] ;
     bzero(fb, (win_width*win_height*3)*sizeof(GLubyte)) ;
-    
-    // Go through list
-    for (int elm = 0; elm < list_size; elm++) {
-        int value = list[elm];
-        for (int height = 0; height < value; height++) {
-            fb[height][3*elm][1] = 255;
-        }
-    }
-    /*
-    int fb_col = 0;
-    stack356_t* stack_copy = make_stack();
-    // Iterate through the stack, for each Node, get the array, for each value in array, put a column on the screen of its value.
-    while (!stk_is_empty(merge_stack)) {
-        Node* cur_node = pop(merge_stack);
-        for (int i=0; i<cur_node->size; i++) {
-            // Fill in framebuffer with a column representing the value.
-            for (int j = 0; j < cur_node->array[i]; j++) {
-                fb[fb_col][i][1] = 255;
-                fb_col++;
+
+    if (state == PRESORT || state == SORTED) {
+        // Display list from global list.
+        // Go through list
+        for (int elm = 0; elm < list_size; elm++) {
+            int value = merge_list[elm];
+            for (int height = 0; height < value; height++) {
+                fb[height][3*elm][1] = 255;
             }
         }
-        push(stack_copy, cur_node);
     }
-    // Put stack back together from copy.
-    while (!stk_is_empty(stack_copy)) {
-        push(merge_stack, pop(stack_copy));
-    }*/
+    else if (state == SORTING) {
+        stack356_t* stack_copy = make_stack();
+        // Iterate through the stack, for each Node, get the array, for each value in array, put a column on the screen of its value.
+        int fb_col = 0;
+        while (!stk_is_empty(merge_stack)) {
+            Node* cur_node = pop(merge_stack);
+            // Go through list
+            for (int elm = 0; elm < cur_node->size; elm++) {
+                int value = cur_node->array[elm];
+                for (int height = 0; height < value; height++) {
+                    fb[height][3*fb_col][1] = 255;
+                }
+                fb_col++;
+            }
+            push(stack_copy, cur_node);
+        }
+        // Put stack back together from copy.
+        while (!stk_is_empty(stack_copy)) {
+            push(merge_stack, pop(stack_copy));
+        }
+    }
 
     // Draw the pixels.  An alternative to WindowPos* is RasterPos*, but the
     // latter takes into account the current model-view transformation, so
@@ -343,7 +402,7 @@ void iterate() {
     }else if (state == SORTING) {
         debug("iterate: state = %d", state);
         merge_sort_iterate(merge_stack, compare);
-        //quick_sort_iterate(quick_stack, compare);
+        quick_sort_iterate(quick_stack);
 
         glutSetWindow(upper_win) ;
         glutPostRedisplay() ;
@@ -362,6 +421,7 @@ void iterate() {
  * @returns - returns a pointer to the newly created Sublist
  */
 Sublist* make_sublist(int start_index, int end_index) {
+    debug("make_sublist"); 
     Sublist* new_sublist = malloc(sizeof(Sublist));
     new_sublist->start_index = start_index;
     new_sublist->end_index = end_index;
@@ -369,6 +429,7 @@ Sublist* make_sublist(int start_index, int end_index) {
 }
 
 void no_op() {
+    debug("no_op");
 }
 
 void process_menu(int option) {
@@ -457,7 +518,8 @@ void draw_lower_rectangle() {
 }
 
 void create_menu() {
-    int menu = glutCreateMenu(process_menu);
+    debug("create_menu");
+    glutCreateMenu(process_menu);
     glutAddMenuEntry("Animate sorting.", 1);
     glutAddMenuEntry("Quit!", 0);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
