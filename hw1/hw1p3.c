@@ -55,6 +55,7 @@ typedef struct Sublist {
     int end_index;
 } Sublist;
 
+// Function Declarations
 Sublist* make_sublist(int start_index, int end_index);
 void swap(int *xs, int index_a, int index_b);
 int partition(int *xs, int m, int n, int(*compare)(int, int));
@@ -65,7 +66,7 @@ void draw_main_window(void);
 void draw_mergesort_window(void);
 void draw_quicksort_window(void);
 void update_lists(void);
-void drawString(char *s, void* font);
+void draw_string(char *s, void* font);
 int* generate_random_list();
 
 int main(int argc, char **argv) {
@@ -220,7 +221,7 @@ void draw_main_window(void) {
         glColor3f(1.0f, 1.0f, 1.0f);
         glRasterPos2f(-0.9f, -0.85f);
         char msg[MAX_STRING_LENGTH] = "Welcome. Click anywhere to begin.";
-        drawString(msg, GLUT_BITMAP_HELVETICA_18);
+        draw_string(msg, GLUT_BITMAP_HELVETICA_18);
     }
     
     glutSwapBuffers();
@@ -253,12 +254,12 @@ void draw_mergesort_window(void) {
     glColor3f(1.0f, 1.0f, 1.0f);
     glRasterPos2f(-0.95f, 0.75f);
     char label[MAX_STRING_LENGTH] = "Mergesort";
-    drawString(label, GLUT_BITMAP_HELVETICA_18);
+    draw_string(label, GLUT_BITMAP_HELVETICA_18);
     
     glRasterPos2f(-0.95f, -0.75f);
     char counter[MAX_STRING_LENGTH];
     sprintf(counter, "Merges: %d", mergesort_counter);
-    drawString(counter, GLUT_BITMAP_8_BY_13);
+    draw_string(counter, GLUT_BITMAP_8_BY_13);
     
     glutSwapBuffers();
 }
@@ -287,12 +288,12 @@ void draw_quicksort_window(void) {
     glColor3f(1.0f, 1.0f, 1.0f);
     glRasterPos2f(-0.95f, 0.75f);
     char label[MAX_STRING_LENGTH] = "Quicksort";
-    drawString(label, GLUT_BITMAP_HELVETICA_18);
+    draw_string(label, GLUT_BITMAP_HELVETICA_18);
     
     glRasterPos2f(-0.95f, -0.75f);
     char counter[MAX_STRING_LENGTH];
     sprintf(counter, "Partitions: %d", quicksort_counter);
-    drawString(counter, GLUT_BITMAP_8_BY_13);
+    draw_string(counter, GLUT_BITMAP_8_BY_13);
     
     glutSwapBuffers();
 }
@@ -433,7 +434,7 @@ void update_lists(void) {
 }
 
 // Draws the string specified in char array s, using font.
-void drawString(char *s, void *font) {
+void draw_string(char *s, void *font) {
     for (int i = 0; i < strlen(s); i++)
         glutBitmapCharacter(font, s[i]);
 }
