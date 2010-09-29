@@ -1,5 +1,5 @@
 /** @file hw1utils.c
- *  @brief This file contains some useful utility functions.
+ *  @brief This file contains some useful utility functions and structures.
  */
 
 #include <stdio.h>
