@@ -1,6 +1,5 @@
 /** @file hw1p12.h
- *  @brief This header file defines the following functions used in
- *  hw1p12.c.
+ *  @brief The header file for hw1p12.c.
  */
 #include <stdlib.h>
 
