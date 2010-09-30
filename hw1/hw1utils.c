@@ -1,5 +1,11 @@
 /** @file hw1utils.c
  *  @brief This file contains some useful utility functions and structures.
+ *
+ *  Professor Danner
+ *  Computer Graphics 356
+ *  Homework #1
+ *  Evan Carmi (WesID: 807136) and Carlo Francisco (WesID: 774066)
+ *  ecarmi@wesleyan.edu and jfrancisco@wesleyan.edu
  */
 
 #include <stdio.h>

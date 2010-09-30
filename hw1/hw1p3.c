@@ -1,30 +1,38 @@
-/*
-Problem 4
-The method described wouldn't work because of how display callbacks are
-normally handled in GLUT. It is assumed that the program is maintaining some
-sort of state that represents the current array being merge- or quicksorted.
-This state has to be updated by the method that is modifying that array.
-If a recursive method were to be used, a method call somewhere down the
-call tree would not be able to update the state, since that method call only
-has information about the current sub-array being sorted.
-
-For example, a quicksort called on the left side of the original array
-will be able to partition the array, but it doesn't know what part of the
-original array it just partitioned. Thus, it can't accurately modify the 
-original state to be redisplayed.
-
-However, we could conceivably pass in more state in the form of indices
-so that the recursive method could know which part of the array it's working
-on, and redisplay appropriately. This is essentially what our iterative
-methods in this program are doing, aside from simulating the call-stack used
-in recursive approaches.
-*/
-
-
 /** @file hw1p3.c
  *  @brief An application that provides a visual animation of merge sort and
  *  quick sort.
+ *
+ *  Professor Danner
+ *  Computer Graphics 356
+ *  Homework #1
+ *  Evan Carmi (WesID: 807136) and Carlo Francisco (WesID: 774066)
+ *  ecarmi@wesleyan.edu and jfrancisco@wesleyan.edu
+ *
  */
+
+/*
+Problem 4
+The method described would not work because of how display callbacks are
+normally handled in GLUT. Specifically, glutPostRedisplay() does not, in fact,
+redisplay the current window, but rather marks the normal plane of the current
+window as needing to be redisplayed. This marking then causes the window's
+display callback function to be called in the next iteration of glutMainLoop.
+However, the next iteration of the glutMainLoop (and with it the window's
+display callback function) will not be called until the entire recursive call
+tree completes.
+
+Additionally, we would be unable to compare two algorithms by running them
+simultaneously in a recursive implementation. Once one recursive function has
+started to call itself recursively, we are unable to handle any other events or
+proceed with other algorithms until the first recursive call finishes. For this
+reason, using recursive implementations of algorithms to display graphics or
+allow user interaction is very limiting. Using a loop based system like
+glutMainLoop, we are able to run multiple iterative algorithms while handling
+window resizes and keyboard/mouse events in an intelligent way.
+
+For these reasons, we are unable to use recursive implementations of merge sort
+and quick sort to create a visualization of this sort.
+*/
 
 #include <stdio.h>
 #include <string.h>

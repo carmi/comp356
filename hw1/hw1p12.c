@@ -1,6 +1,12 @@
 /** @file hw1p12.c
  *  @brief This file contains two programs: a recursive and iterative merge
  *  sort implementation.
+ *
+ *  Professor Danner
+ *  Computer Graphics 356
+ *  Homework #1
+ *  Evan Carmi (WesID: 807136) and Carlo Francisco (WesID: 774066)
+ *  ecarmi@wesleyan.edu and jfrancisco@wesleyan.edu
  */
 
 #include <stdio.h>

@@ -1,5 +1,11 @@
 /** @file hw1utils.h
  *  @brief This is the header file for hw1utils.c.
+ *
+ *  Professor Danner
+ *  Computer Graphics 356
+ *  Homework #1
+ *  Evan Carmi (WesID: 807136) and Carlo Francisco (WesID: 774066)
+ *  ecarmi@wesleyan.edu and jfrancisco@wesleyan.edu
  */
 #include <stdlib.h>
 #include <stack356.h>
