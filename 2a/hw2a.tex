@@ -1,21 +1,22 @@
 % hw2a.tex - Comp356 HW 2A Answers
 
-\documentclass{article}
+% Declare page size and style.
+\documentclass[a4paper, 12pt]{article}
+\pagestyle{plain}
+\usepackage{fullpage}
+
+% Declare which packages to use..
 \usepackage{amsmath}
 \usepackage{amssymb}
 
-% Define new commands for vectors.
+% Define custom commands for the document.
 \newcommand{\abs}[1]{\lvert#1\rvert}
 \newcommand{\norm}[1]{\lVert#1\rVert}
 
-\title{Comp 356: Computer Graphics\\
-Homework 2A: Ray-tracing geometry}
-\author{Evan Carmi}
-\date{11 October 2010}
+\input{./utils.tex}
 
 \begin{document}
-\maketitle
-\rule{\textwidth}{.1pt}
+\hwheader{Comp 356: Computer Graphics\\Homework 2A: Ray-tracing geometry}
 
 \begin{enumerate}
     \item \textbf{Problem:} Assuming the standard camera frame based on the viewpoint, look-at point, and up- direction, compute the camera frame basis expressed as linear combinations of the standard basis.  Your camera frame basis must be orthonormal.
@@ -23,13 +24,20 @@ Homework 2A: Ray-tracing geometry}
         \textbf{Solution:} First, we must compute the vectors that will compose our basis \(\vec{u}, \vec{v}, \vec{w}\).
         \[\vec{w} \text{ is opposite the view direction so } \vec{w} = \frac{\vec{e} - \vec{P}}{\norm{\vec{e} - \vec{P}}}\]
         \[ \vec{e} - \vec{P} = (4,4,4) - (-1,-1,-1) = (3,3,3) \]
-        \[ \vec{w} = \frac{(3,3,3)}{\norm{(3,3,3)}} = \frac{(3,3,3)}{\sqrt{3^2 + 3^2 + 3^2}} = (.577, .577, .577) \]
+        \[ \vec{w} = \frac{(3,3,3)}{\norm{(3,3,3)}} = \frac{(3,3,3)}{\sqrt{3^2 + 3^2 + 3^2}} = \fbox{(.577, .577, .577)} \]
         \[ \vec{u} = \frac{\vec{up} \times \vec{P}}{\norm{\vec{up} \times \vec{P}}} \text{ and } \vec{up} \times \vec{P} = (0,1,0) \times (.577, .577, .577) \]
         \[= ( (1*.577 - 0*.577), (0*.577 - 0*.577), (0*.577 - 1*.577))  = (.577, 0, -.577)\]
-        \[\vec{u} = \frac{(.577, 0, -.577)}{\norm{(.577, 0, -.577)}} = \frac{(.577, 0, -.577)}{\sqrt{.577^2 + 0^2 + -.577^2)}} = (.707, 0, -.707)\]
-        \[\vec{u} = \vec{w} \times \vec{u} = (.577, 0, -.577) \times (.707, 0, -.707)
+        \[\vec{u} = \frac{(.577, 0, -.577)}{\norm{(.577, 0, -.577)}} = \frac{(.577, 0, -.577)}{\sqrt{.577^2 + 0^2 + -.577^2)}} = \fbox{(.707, 0, -.707)}\]
+        \[\vec{v} = \vec{w} \times \vec{u} = (.577, 0, -.577) \times (.707, 0, -.707)\]
+        \[= \left( \left( .577*-.707 \right) - \left( .577*0 \right), \left( .577*.707 \right) - \left( .577*-.707 \right), \left( .577*.707 \right) - \left( .577*.707 \right) \right)\]
+        \[ \vec{v} = \fbox{(-.407, .815, -.407)}\]
 
+        These vectors form the orthonormal basis for the camera frame.
+        \[\fbox{Basis: $\vec{u}$, $\vec{v}$, $\vec{w}$}\]
 
+    \item \textbf{Problem:} Assuming the standard viewing rectangle that lies in a plane that is orthogonal to \(\vec{w}\) and such that \(\vec{e} - t\vec{w}\) intersects the viewing rectangle in its center, give the coordinates of the lower-left and upper-right corners of the view rectangle in the world frame.
+
+    \textbf{Solution:} 
 
 
 \end{enumerate}
