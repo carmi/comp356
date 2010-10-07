@@ -1,0 +1,15 @@
+% utils.tex - A LaTeX file that contains commonly used commands and other miscellaneous things.
+% Usage: to include this file in another .tex file add:
+%   \input{./utils.tex}
+% to the preamble of that document.
+
+% Define a create title command.
+% Based off a header by Matt Adelman.
+\newcommand{\HRule}{\noindent\rule{\linewidth}{.5mm}\\}
+\newcommand{\hwheader}[1]{\begin{center}
+    \textbf{ Evan Carmi\\
+    #1\\
+    \today
+    } \end{center}
+    \HRule
+}
