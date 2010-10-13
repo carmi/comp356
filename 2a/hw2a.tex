@@ -114,7 +114,74 @@
             \vec{n} =& \frac{(\vec{p} - \vec{c}}{\norm{\vec{p} - \vec{c}}} = \frac{\vec{p}}{\norm{\vec{p}}} = \frac{(.595, .613, .554)}{\sqrt{(.595^2 + .613^2 + .554^2}} = (.584, .602, .554)\\
         \end{align*}
 
+    \item \textbf{Problem:} If $\vec{r}$ is the viewing ray through pixel (400, 300), at what time does $\vec{r}$ intersect the triangle with corners (1, 0, 0), (0, 1, 0), and (0, 0, 1) (in the world frame)? What are the coordinates of the intersection point? What is the surface normal at the intersection point?
 
+        \textbf{Solution:} To calculate a ray-triangle intersection, we must setup a system of equations with three equations and three unknowns and solve. In general, for a triangle with vertices $\vec{a}$, $\vec{b}$ and $\vec{c}$ the intersection will occur when:
+    \begin{align*}
+        \vec{e} + t\vec{d} =& \vec{a} + \beta(\vec{b} - \vec{a}) + \gamma(\vec{c} - \vec{a})\\
+        &\text{To solve for some $t, \beta, \gamma$ we expand to vector form which can be rewritten}\\
+        &\text{as a system of linear equations:}\\
+        &\begin{bmatrix}
+            x_a-x_b & x_a - x_c & x_d \\
+            y_a-y_b & y_a - y_c & y_d \\
+            z_a-z_b & z_a - z_c & z_d
+        \end{bmatrix}
+        \begin{bmatrix}
+            \beta \\
+            \gamma \\
+            t
+        \end{bmatrix}
+        =
+        \begin{bmatrix}
+            x_a - x_e \\
+            y_a - y_e \\
+            z_a - z_e
+        \end{bmatrix}\\
+        &\text{The fastest method to solve a 3 $\times$ 3 linear system is Cramer's rule.}\\
+        &\text{This gives us the solutions:}\\
+        \beta =&
+        \frac{
+        \begin{vmatrix}
+            x_a-x_e & x_a - x_c & x_d \\
+            y_a-y_e & y_a - y_c & y_d \\
+            z_a-z_e & z_a - z_c & z_d
+        \end{vmatrix}
+        }{
+        \begin{vmatrix}
+            A
+        \end{vmatrix}
+        }
+        \gamma =&
+        \frac{
+        \begin{vmatrix}
+            x_a-x_b & x_a - x_e & x_d \\
+            y_a-y_b & y_a - y_e & y_d \\
+            z_a-z_b & z_a - z_e & z_d
+        \end{vmatrix}
+        }{
+        \begin{vmatrix}
+            A
+        \end{vmatrix}
+        }\\
+        t =&
+        \frac{
+        \begin{vmatrix}
+            x_a-x_b & x_a - x_c & x_a - x_e \\
+            y_a-y_b & y_a - y_c & y_a - y_e \\
+            z_a-z_b & z_a - z_c & z_a - z_e
+        \end{vmatrix}
+        }{
+        \begin{vmatrix}
+            A
+        \end{vmatrix}
+        }\\
+        &\text{Where the matrix $A$ is:}\\
+        A =&\begin{bmatrix}
+            x_a-x_b & x_a - x_c & x_d \\
+            y_a-y_b & y_a - y_c & y_d \\
+            z_a-z_b & z_a - z_c & z_d
+        \end{bmatrix}\\
+    \end{align*}
 
 
 \end{enumerate}
