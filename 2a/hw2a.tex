@@ -23,19 +23,27 @@
 
         \textbf{Solution:} First, we must compute the vectors that will compose our basis \(\vec{u}, \vec{v}, \vec{w}\).
         \(\vec{w}\) is opposite the view direction so
+        %Compute w
         \begin{align*}
         \vec{w} =& \frac{\vec{e} - \vec{P}}{\norm{\vec{e} - \vec{P}}}\\
         \vec{e} - \vec{P} =& (4,4,4) - (-1,-1,-1) = (3,3,3)\\
-        \vec{w} =& \frac{(3,3,3)}{\norm{(3,3,3)}} = \frac{(3,3,3)}{\sqrt{3^2 + 3^2 + 3^2}} = \fbox{(.577, .577, .577)}\\
-        \vec{u} =& \frac{\vec{up} \times \vec{P}}{\norm{\vec{up} \times \vec{P}}} \text{ and } \vec{up} \times \vec{P} = (0,1,0) \times (.577, .577, .577)\\
-        =& ( (1*.577 - 0*.577), (0*.577 - 0*.577), (0*.577 - 1*.577))  = (.577, 0, -.577)\\
-        \vec{u} =& \frac{(.577, 0, -.577)}{\norm{(.577, 0, -.577)}} = \frac{(.577, 0, -.577)}{\sqrt{.577^2 + 0^2 + -.577^2)}} = \fbox{(.707, 0, -.707)}\\
-        \vec{v} =& \vec{w} \times \vec{u} = (.577, 0, -.577) \times (.707, 0, -.707)\\
-        =& \left( \left( .577*-.707 \right) - \left( .577*0 \right), \left( .577*.707 \right) - \left( .577*-.707 \right), \left( .577*.707 \right) - \left( .577*.707 \right) \right)\\
-        \vec{v} =& \fbox{(-.407, .815, -.407)}\\
+        \vec{w} =& \frac{(3,3,3)}{\norm{(3,3,3)}} = \frac{(3,3,3)}{\sqrt{3^2 + 3^2 + 3^2}} = \fbox{$(\frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}})$}\\
+        %Compute u
+        \vec{u} =& \frac{\vec{up} \times \vec{w}}{\norm{\vec{up} \times \vec{w}}}\\
+        \vec{up} \times \vec{w} =& (0,1,0) \times (\frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}})\\
+        \vec{up} \times \vec{w} =& (1\frac{1}{\sqrt{3}} - 0\frac{1}{\sqrt{3}}, 0\frac{1}{\sqrt{3}} - 0\frac{1}{\sqrt{3}}, 0\frac{1}{\sqrt{3}} - 1\frac{1}{\sqrt{3}}) = (\frac{1}{\sqrt{3}}, 0, -\frac{1}{\sqrt{3}}) \\
+        \vec{u} =& \frac{(\frac{1}{\sqrt{3}}, 0, -\frac{1}{\sqrt{3}})}{\norm{(\frac{1}{\sqrt{3}}, 0, -\frac{1}{\sqrt{3}}}} = \frac{(\frac{1}{\sqrt{3}}, 0, -\frac{1}{\sqrt{3}})}{\sqrt{\frac{1}{\sqrt{3}}^2 + 0^2 - \frac{1}{\sqrt{3}}^2}} = \frac{(\frac{1}{\sqrt{3}}, 0, -\frac{1}{\sqrt{3}})}{\sqrt{\frac{2}{3}}} = \fbox{$(\frac{1}{\sqrt{2}}, 0, -\frac{1}{\sqrt{2}})$}\\
+        %Compute v
+        \vec{v} =& \vec{w} \times \vec{u} = (\frac{1}{\sqrt{2}}, 0, -\frac{1}{\sqrt{2}}) \times (\frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}})\\
+        &\text{Dot product calculation is same as above, omitted for brevity.}\\
+        \vec{v} =& \fbox{$(-\frac{1}{\sqrt{6}}, \frac{2}{\sqrt{6}}, -\frac{1}{\sqrt{6}} $}\\
+        %Show as linear combination of standard basis
+        &\text{These vectors form the orthonormal basis for the camera frame and}\\
+        &\text{can be expressed as linear combinations of the standard basis:}\\
+        \vec{u} =& \frac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\frac{1}{\sqrt{2}}\vec{k}\\
+        \vec{v} =& \frac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\frac{1}{\sqrt{2}}\vec{k}\\
+        \vec{w} =& \frac{1}{\sqrt{3}}\vec{i} + \frac{1}{\sqrt{3}}\vec{j} + \frac{1}{\sqrt{3}}\vec{k}\\
         \end{align*}
-        These vectors form the orthonormal basis for the camera frame.
-        \[\fbox{Basis: $\vec{u}$, $\vec{v}$, $\vec{w}$}\]
 
     \item \textbf{Problem:} Assuming the standard viewing rectangle that lies in a plane that is orthogonal to \(\vec{w}\) and such that \(\vec{e} - t\vec{w}\) intersects the viewing rectangle in its center, give the coordinates of the lower-left and upper-right corners of the view rectangle in the world frame.
 
