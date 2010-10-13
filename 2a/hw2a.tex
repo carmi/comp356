@@ -90,7 +90,7 @@
         \begin{align*}
             \vec{d} &= (0.005, 0.005, -1) = 0.005\vec{u} + 0.005\vec{v} - 1\vec{w}\\
             \vec{d} &= 0.005\left( \frac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\frac{1}{\sqrt{2}}\vec{k} \right) + 0.005\left(-\frac{1}{\sqrt{6}}\vec{i} + \frac{2}{\sqrt{6}}\vec{j} -\frac{1}{\sqrt{6}}\vec{k} \right) - 1\left( \frac{1}{\sqrt{3}}\vec{i} + \frac{1}{\sqrt{3}}\vec{j} + \frac{1}{\sqrt{3}}\vec{k} \right)\\
-            \vec{d} &= -.570\vec{i} - .577\vec{j} -.584\vec{k}\\
+            \vec{d} &= -.576\vec{i} - .573\vec{j} -.583\vec{k}\\
     \end{align*}
 
     \item \textbf{Problem:} If $\vec{r}$ is the viewing ray through pixel (400, 300), at what time does $\vec{r}$ intersect the sphere centered at the origin with radius 1? What are the coordinates of the intersection point?  What is the surface normal at the intersection point?
@@ -100,7 +100,18 @@
             &\text{We note that $\vec{c}$ is at the origin so $\vec{e} - \vec{c} = \vec{e}$.}\\
             t =& \frac{-\vec{d}\cdot\vec{e} \pm \sqrt{(\vec{d}\cdot(\vec{e})^2 - (\vec{d}\cdot\vec{d})\left( \vec{e}\cdot\vec{e} - R^2 \right)}}{\vec{d}\cdot\vec{d}}\\
             &\text{We begin plugging in values and get:}\\
-            t =& \frac{6.924 \pm \sqrt{(\vec{d}\cdot(\vec{e})^2 - (\vec{d}\cdot\vec{d})\left( \vec{e}\cdot\vec{e} - R^2 \right)}}{\vec{d}\cdot\vec{d}}\\
+            t =& \frac{6.928 \pm \sqrt{47.999 - (0.999)\left( 48 - 1^2 \right)}}{0.999}\\
+            t =& \frac{6.928 \pm \sqrt{1.046}}{0.999}\\
+            t =& 7.959\\
+            t =& 5.911\\
+            &\text{So the coordinates of the first intersection are:}\\
+            p(5.911) =& \vec{e} + (5.911)\vec{d} = (.595, .613, .554)\\
+            &\text{And the coordinates of the second intersection are:}\\
+            p(7.959) =& \vec{e} + (7.959)\vec{d} = (-.584, -.560, -.640)\\
+            &\text{The second intersection point is on the back of the sphere,}\\
+            &\text{so our main intersection point is the first one of (.595, .613, .554)}\\
+            &\text{The surface normal at this first point is:}\\
+            \vec{n} =& \frac{(\vec{p} - \vec{c}}{\norm{\vec{p} - \vec{c}}} = \frac{\vec{p}}{\norm{\vec{p}}} = \frac{(.595, .613, .554)}{\sqrt{(.595^2 + .613^2 + .554^2}} = (.584, .602, .554)\\
         \end{align*}
 
 
