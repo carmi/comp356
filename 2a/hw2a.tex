@@ -41,51 +41,70 @@
         &\text{These vectors form the orthonormal basis for the camera frame and}\\
         &\text{can be expressed as linear combinations of the standard basis:}\\
         \vec{u} =& \frac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\frac{1}{\sqrt{2}}\vec{k}\\
-        \vec{v} =& \frac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\frac{1}{\sqrt{2}}\vec{k}\\
+        \vec{v} =& -\frac{1}{\sqrt{6}}\vec{i} + \frac{2}{\sqrt{6}}\vec{j} -\frac{1}{\sqrt{6}}\vec{k}\\
         \vec{w} =& \frac{1}{\sqrt{3}}\vec{i} + \frac{1}{\sqrt{3}}\vec{j} + \frac{1}{\sqrt{3}}\vec{k}\\
         \end{align*}
 
     \item \textbf{Problem:} Assuming the standard viewing rectangle that lies in a plane that is orthogonal to \(\vec{w}\) and such that \(\vec{e} - t\vec{w}\) intersects the viewing rectangle in its center, give the coordinates of the lower-left and upper-right corners of the view rectangle in the world frame.
 
-        \textbf{Solution:}Let the view rectangle have width (W) = 8 units and height (H) = 6 units and d = 1. The lower-left coordinate of the view rectangle is \( ( $-$\frac{W}{2}, \frac{H}{2}, $-$d) \) and the upper-right coordinate is \( (\frac{W}{2}, \frac{H}{2}, $-$d) \). However, the view rectangle is defined in the camera frame $\vec{u}$, $\vec{v}$, $\vec{w}$ so the lower-left point is:
+        \textbf{Solution:} Let the view rectangle have width (W) = 8 units and height (H) = 6 units and be located 1 unit from the view point (so d = 1). The lower-left coordinate of the view rectangle is \( ( $-$\frac{W}{2}, $-$\frac{H}{2}, $-$d) \) and the upper-right coordinate is \( (\frac{W}{2}, \frac{H}{2}, $-$d) \). However, the view rectangle is defined in the camera frame $\vec{u}$, $\vec{v}$, $\vec{w}$ so the lower-left point expressed as a linear combination of the camera frame is:
         \begin{align*}
-            &( -\frac{W}{2}\vec{u}, \frac{H}{2}\vec{v}, -d\vec{w})\\
-            &\text{W=8, H=6, D=1, so we get}\\
-            &= (-4\vec{u}, 3\vec{v}, -1\vec{w})\\
-            P_{lower left} &= \text{viewpoint $\vec{e}$} + (-4\vec{u}, 3\vec{v}, -1\vec{w})\\
-            P_{lower left} &= (4,4,4) + (-4\vec{u}, 3\vec{v}, -1\vec{w})\\
-            P_{lower left} &= 4\vec{i}, 4\vec{j}, 4\vec{k} + (-4\vec{u}, 3\vec{v}, -1\vec{w})\\
-            P_{lower left} &= 4\vec{i}, 4\vec{j}, 4\vec{k} + -4(.707, 0, -.707) + 3(-.407, .815, -.407) - 1(.577, .577, .577)\\
-            P_{lower left} &= 4\vec{i}, 4\vec{j}, 4\vec{k} + -4(.707\vec{i} + 0\vec{j} - .707\vec{k}) + 3(-.407\vec{i} + .815\vec{j} - .407\vec{k}) - 1(.577\vec{i} + .577\vec{j} + .577\vec{k})\\
-            P_{lower left} &= -.626\vec{i} + 5.868\vec{j} + 5.03\vec{k}
+            &-\frac{W}{2}\vec{u} - \frac{H}{2}\vec{v} -d\vec{w}\\
+            &\text{W=8, H=6, d=1, so we get}\\
+            &= -4\vec{u} - 3\vec{v} -1\vec{w}\\
+            &\text{We now perform a change of basis to the world frame}\\
+            P_{lower left} &= \text{viewpoint $\vec{e}$} + (-4\vec{u} - 3\vec{v} -1\vec{w})\\
+            P_{lower left} &= \vec{e} -4\vec{u} - 3\vec{v} -1\vec{w})\\
+            P_{lower left} &= \vec{e} -4\left(\frac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\frac{1}{\sqrt{2}}\vec{k}\right) - 3\left( -\frac{1}{\sqrt{6}}\vec{i} + \frac{2}{\sqrt{6}}\vec{j} -\frac{1}{\sqrt{6}}\vec{k} \right) - 1\left(\frac{1}{\sqrt{3}}\vec{i} + \frac{1}{\sqrt{3}}\vec{j} + \frac{1}{\sqrt{3}}\vec{k}\right)\\
+            P_{lower left} &= \vec{e} + \left( \frac{-4}{\sqrt{2}} + \frac{3}{\sqrt{6}} -\frac{1}{\sqrt{3}} \right) \vec{i} + \left(\frac{-6}{\sqrt{6}} - \frac{1}{\sqrt{3}} \right) \vec{j} + \left( \frac{4}{\sqrt{2}} +\frac{3}{\sqrt{6}} - \frac{1}{\sqrt{3}} \right) \vec{k}\\
+            P_{lower left} &= 4\vec{i}, 4\vec{j}, 4\vec{k} + \left( \frac{-4}{\sqrt{2}} + \frac{3}{\sqrt{6}} -\frac{1}{\sqrt{3}} \right) \vec{i} + \left(\frac{-6}{\sqrt{6}} - \frac{1}{\sqrt{3}} \right) \vec{j} + \left( \frac{4}{\sqrt{2}} +\frac{3}{\sqrt{6}} - \frac{1}{\sqrt{3}} \right) \vec{k}\\
+            P_{lower left} &= 1.819\vec{i} + 0.973\vec{j} + 7.476\vec{k}\\
+            &\text{And so the coordinates of the lower left corner in world frame are:}\\
+            P_{lower left} &= (1.819, 0.973, 7.476)\\
         \end{align*}
         And we repeat this process to find the upper-right corner coordinate, beginning with it being defined in the camera frame as \( (\frac{W}{2}, \frac{H}{2}, -d) \).
         \begin{align*}
-            &= (4\vec{u}, 3\vec{v}, -1\vec{w})\\
-            P_{upper right} &= (4,4,4) + (4\vec{u}, 3\vec{v}, -1\vec{w})\\
-            P_{upper right} &= 4\vec{i}, 4\vec{j}, 4\vec{k} + 4(.707, 0, -.707) + 3(-.407, .815, -.407) - 1(.577, .577, .577)\\
-            P_{upper right} &= 4\vec{i}, 4\vec{j}, 4\vec{k} + 4(.707\vec{i} + 0\vec{j} - .707\vec{k}) + 3(-.407\vec{i} + .815\vec{j} - .407\vec{k}) - 1(.577\vec{i} + .577\vec{j} + .577\vec{k})\\
-            P_{upper right} &= 5.03\vec{i} + 5.868\vec{j} -.626\vec{k}
+            &\frac{W}{2}\vec{u} + \frac{H}{2}\vec{v} -d\vec{w}\\
+            &\text{W=8, H=6, d=1, so we get}\\
+            &= 4\vec{u} + 3\vec{v} -1\vec{w}\\
+            &\text{We now perform a change of basis to the world frame}\\
+            P_{upper right} &= \text{viewpoint $\vec{e}$} + (4\vec{u} + 3\vec{v} -1\vec{w})\\
+            P_{upper right} &= \vec{e} + 4\vec{u} + 3\vec{v} -1\vec{w})\\
+            P_{upper right} &= \vec{e} + 4\left(\frac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\frac{1}{\sqrt{2}}\vec{k}\right) + 3\left(-\frac{1}{\sqrt{6}}\vec{i} + \frac{2}{\sqrt{6}}\vec{j} -\frac{1}{\sqrt{6}}\vec{k}\right) - 1\left(\frac{1}{\sqrt{3}}\vec{i} + \frac{1}{\sqrt{3}}\vec{j} + \frac{1}{\sqrt{3}}\vec{k}\right)\\
+            P_{upper right} &= \vec{e} + \left( \frac{4}{\sqrt{2}} - \frac{3}{\sqrt{6}} -\frac{1}{\sqrt{3}} \right) \vec{i} + \left( \frac{6}{\sqrt{6}} - \frac{1}{\sqrt{3}} \right) \vec{j} + \left( -\frac{4}{\sqrt{2}} -\frac{3}{\sqrt{6}} - \frac{1}{\sqrt{3}} \right) \vec{k}\\
+            P_{upper right} &= 4\vec{i}, 4\vec{j}, 4\vec{k} + \left( \frac{4}{\sqrt{2}} - \frac{3}{\sqrt{6}} -\frac{1}{\sqrt{3}} \right) \vec{i} + \left( \frac{6}{\sqrt{6}} - \frac{1}{\sqrt{3}} \right) \vec{j} + \left( -\frac{4}{\sqrt{2}} -\frac{3}{\sqrt{6}} - \frac{1}{\sqrt{3}} \right) \vec{k}\\
+            P_{upper right} &= 5.026\vec{i} + 8.872\vec{j} + -0.631\vec{k}\\
+            &\text{And so the coordinates of the upper right corner in world frame are:}\\
+            P_{upper right} &= (5.026, 8.872, -0.631)\\
+            \end{align*}
+        \item \textbf{Problem:} Let $\vec{r}$ = $\vec{e}$ + t$\vec{d}$ be the viewing ray through pixel (400, 300). What is $\vec{d}$ in the world frame?
+
+        \textbf{Solution:}We first map the screen pixel (400, 300) to a point (in the camera frame) on our view rectangle of 800 $\times$ 600 pixels. The vector from viewpoint $\vec{e}$ to this point on the view rectangle is $\vec{d}$, and we lastly show it in the world frame.
+    \begin{align*}
+        &\text{The pixel$(i, j)$ maps to following point on the view rectangle (in camera frame):}\\
+        &\left( -\frac{W}{2} + \frac{i + 0.5}{n_x}W, -\frac{H}{2} + \frac{j + 0.5}{n_y}H, -d \right) \text{ so}\\
+        &Pixel(400, 300) : \left( -\frac{8}{2} + \frac{400 + 0.5}{800}8, -\frac{6}{2} + \frac{300 + 0.5}{600}6, -1 \right)\\
+        &= (0.005, 0.005, -1)\\
+    \end{align*}
+        Because $\vec{e}$ is the origin of the camera frame, this point on the view rectangle is the same as the vector from the origin to the point. So this is $\vec{d}$ in the camera frame. We now perform a change of basis to standard basis (similarly to Problem 2 above).
+        \begin{align*}
+            \vec{d} &= (0.005, 0.005, -1) = 0.005\vec{u} + 0.005\vec{v} - 1\vec{w}\\
+            \vec{d} &= 0.005\left( \frac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\frac{1}{\sqrt{2}}\vec{k} \right) + 0.005\left(-\frac{1}{\sqrt{6}}\vec{i} + \frac{2}{\sqrt{6}}\vec{j} -\frac{1}{\sqrt{6}}\vec{k} \right) - 1\left( \frac{1}{\sqrt{3}}\vec{i} + \frac{1}{\sqrt{3}}\vec{j} + \frac{1}{\sqrt{3}}\vec{k} \right)\\
+            \vec{d} &= -.570\vec{i} - .577\vec{j} -.584\vec{k}\\
+    \end{align*}
+
+    \item \textbf{Problem:} If $\vec{r}$ is the viewing ray through pixel (400, 300), at what time does $\vec{r}$ intersect the sphere centered at the origin with radius 1? What are the coordinates of the intersection point?  What is the surface normal at the intersection point?
+        \textbf{Solution:} $\vec{p}(t) = \vec{e} + t\vec{d}$ The sphere is centered at the origin, so $\vec{c}$ = (0, 0, 0) On page 77 of our text, we have a large quadratic formula for solving for t. It is:
+        \begin{align*}
+            t =& \frac{-\vec{d}\cdot(\vec{e}-\vec{c}) \pm \sqrt{(\vec{d}\cdot(\vec{e}-\vec{c}))^2 - (\vec{d}\cdot\vec{d})\left( (\vec{e}-\vec{c})\cdot(\vec{e}-\vec{c}) - R^2 \right)}}{\vec{d}\cdot\vec{d}}\\
+            &\text{We note that $\vec{c}$ is at the origin so $\vec{e} - \vec{c} = \vec{e}$.}\\
+            t =& \frac{-\vec{d}\cdot\vec{e} \pm \sqrt{(\vec{d}\cdot(\vec{e})^2 - (\vec{d}\cdot\vec{d})\left( \vec{e}\cdot\vec{e} - R^2 \right)}}{\vec{d}\cdot\vec{d}}\\
+            &\text{We begin plugging in values and get:}\\
+            t =& \frac{6.924 \pm \sqrt{(\vec{d}\cdot(\vec{e})^2 - (\vec{d}\cdot\vec{d})\left( \vec{e}\cdot\vec{e} - R^2 \right)}}{\vec{d}\cdot\vec{d}}\\
         \end{align*}
 
-    \item \textbf{Problem:} Let $\vec{r}$ = $\vec{e}$ + t$\vec{d}$ be the viewing ray through pixel (400, 300). What is d in the world
-frame?
 
-        \textbf{Solution:} We know that at time t = 1, the corresponding point on the ray is on the view rectangle. Because our view rectangle is defined in the camera frame,  We first linearly map the screen pixel (400, 300) to our view rectangle of $n_x$ $\times$ $n_y$ pixels.
-    \begin{align*}
-        &\text{The pixel$(i, j)$ is mapped to $u$ = $-\frac{W}{2} + \frac{i + 0.5}{n_x}W$ and $v$ = $-\frac{H}{2} + \frac{j + 0.5}{n_y}H$ so}\\
-        &(400, 300) : u = -\frac{8}{2} + \frac{400 + 0.5}{800}8 = 0.005 \text{ and } v = -\frac{6}{2} + \frac{300 + 0.5}{600}6 = 0.005\\
-        &\text{The view rectangle is 1 unit from the viewpoint $\vec{e}$ (d = 1) so the ray direction is}\\
-        &-d\vec{w} + u\vec{u} + v\vec{v} = 0.005\vec{u} + 0.005\vec{v} - 1\vec{w}\\
-        &\text{and the ray origin is $\vec{e}$ so our ray $\vec{r}$ is:}\\
-        &\vec{r} = \vec{e} + t\vec{d}\\
-        &\text{\textbf{Note:} at time t = 1, the ray describes the point on the view rectangle.}\\
-        &\text{So to calculate $d$ in the world frame we set t=1 and calculate:}\\
-        &\vec{r} = \vec{e} + (1)\vec{d} = \\
-        &\vec{r} = 4\vec{i}, 4\vec{j}, 4\vec{k} + 0.005\vec{u} + 0.005\vec{v} - 1\vec{w}\\
-        &\vec{r} = 4\vec{i}, 4\vec{j}, 4\vec{k} + 0.005(.707\vec{i} + 0\vec{j} - .707\vec{k}) + 0.005(-.407\vec{i} + .815\vec{j} - .407\vec{k}) - 1(.577\vec{i} + .577\vec{j} + .577\vec{k})\\
-        &\vec{r} = 
-    \end{align*}
+
 
 \end{enumerate}
 \end{document}
