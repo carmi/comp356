@@ -68,6 +68,8 @@
             &\text{W=8, H=6, d=1, so we get}\\
             &= 4\vec{u} + 3\vec{v} -1\vec{w}\\
             &\text{We now perform a change of basis to the world frame}\\
+        \end{align*}
+        \begin{align*}
             P_{upper right} &= \text{viewpoint $\vec{e}$} + (4\vec{u} + 3\vec{v} -1\vec{w})\\
             P_{upper right} &= \vec{e} + 4\vec{u} + 3\vec{v} -1\vec{w})\\
             P_{upper right} &= \vec{e} + 4\left(\frac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\frac{1}{\sqrt{2}}\vec{k}\right) + 3\left(-\frac{1}{\sqrt{6}}\vec{i} + \frac{2}{\sqrt{6}}\vec{j} -\frac{1}{\sqrt{6}}\vec{k}\right) - 1\left(\frac{1}{\sqrt{3}}\vec{i} + \frac{1}{\sqrt{3}}\vec{j} + \frac{1}{\sqrt{3}}\vec{k}\right)\\
@@ -118,7 +120,7 @@
 
         \textbf{Solution:} To calculate a ray-triangle intersection, we must setup a system of equations with three equations and three unknowns and solve. In general, for a triangle with vertices $\vec{a}$, $\vec{b}$ and $\vec{c}$ the intersection will occur when:
     \begin{align*}
-        \vec{e} + t\vec{d} =& \vec{a} + \beta(\vec{b} - \vec{a}) + \gamma(\vec{c} - \vec{a})\\
+        &\vec{e} + t\vec{d} = \vec{a} + \beta(\vec{b} - \vec{a}) + \gamma(\vec{c} - \vec{a})\\
         &\text{To solve for some $t, \beta, \gamma$ we expand to vector form which can be rewritten}\\
         &\text{as a system of linear equations:}\\
         &\begin{bmatrix}
@@ -137,50 +139,80 @@
             y_a - y_e \\
             z_a - z_e
         \end{bmatrix}\\
-        &\text{The fastest method to solve a 3 $\times$ 3 linear system is Cramer's rule.}\\
-        &\text{This gives us the solutions:}\\
-        \beta =&
-        \frac{
-        \begin{vmatrix}
-            x_a-x_e & x_a - x_c & x_d \\
-            y_a-y_e & y_a - y_c & y_d \\
-            z_a-z_e & z_a - z_c & z_d
-        \end{vmatrix}
-        }{
-        \begin{vmatrix}
-            A
-        \end{vmatrix}
-        }
-        \gamma =&
-        \frac{
-        \begin{vmatrix}
-            x_a-x_b & x_a - x_e & x_d \\
-            y_a-y_b & y_a - y_e & y_d \\
-            z_a-z_b & z_a - z_e & z_d
-        \end{vmatrix}
-        }{
-        \begin{vmatrix}
-            A
-        \end{vmatrix}
-        }\\
-        t =&
-        \frac{
-        \begin{vmatrix}
-            x_a-x_b & x_a - x_c & x_a - x_e \\
-            y_a-y_b & y_a - y_c & y_a - y_e \\
-            z_a-z_b & z_a - z_c & z_a - z_e
-        \end{vmatrix}
-        }{
-        \begin{vmatrix}
-            A
-        \end{vmatrix}
-        }\\
-        &\text{Where the matrix $A$ is:}\\
-        A =&\begin{bmatrix}
-            x_a-x_b & x_a - x_c & x_d \\
-            y_a-y_b & y_a - y_c & y_d \\
-            z_a-z_b & z_a - z_c & z_d
+        &\text{We plug in our known values of:}\\
+        &\vec{a} = (1,0,0)\\
+        &\vec{b} = (0,1,0)\\
+        &\vec{c} = (0,0,1)\\
+        &\vec{d} = (-.576, -.573, -.583)\\
+        &\vec{e} = (4,4,4)\\
+        &\begin{bmatrix}
+            1 & 1 & -.576 \\
+            -1 & 0 & -.573 \\
+            0 & -1 & -.583
+        \end{bmatrix}
+        \begin{bmatrix}
+            \beta \\
+            \gamma \\
+            t
+        \end{bmatrix}
+        =
+        \begin{bmatrix}
+            -3 \\
+            -4 \\
+            -4
         \end{bmatrix}\\
+        &\text{The fastest method to solve a 3 $\times$ 3 linear system is Cramer's rule.}\\
+        &\text{For a general matrix with dummy variables:}\\
+         &\begin{bmatrix}
+             a & d & g\\
+             b & e & h\\
+             c & f & i
+        \end{bmatrix}
+        \begin{bmatrix}
+            \beta \\
+            \gamma \\
+            t
+        \end{bmatrix}
+        =
+        \begin{bmatrix}
+            j\\
+            k\\
+            l
+        \end{bmatrix}\\
+        &\text{Cramer's rule gives us:}\\
+        &\beta = \frac{j(ei-hf) + k(gf -di) + l(dh -eg)}{M}\\
+        &\gamma = \frac{i(ak -jb) + h(jc -al) + g(bl -kc)}{M}\\
+        &t = \frac{f(ak -jb) + e(jc -al) + d(bl -kc)}{M}\\
+        &\text{where}\\
+        &M = a(ei -hf) + b(gf - di) + c(dh - eg)\\
+        &\text{Using our matrix instead of dummy variables we get:}\\
+        %Use our real values
+        &\beta = \frac{-3( (0)(-.583) - (-.573)(-1) ) + -4( (-.576)(-1) - (1)(-.583) ) + -4( (1)(-.573) - (0)(-.576) )}{M}\\
+        &\gamma = \frac{-.583( (1)(-4) -(-3)(-1) ) + -.573( (-3)(0) - (1)(-4) ) + -.576( (-1)(-4) - (-4)(0))}{M}\\
+        &t = \frac{-1( (1)(-4) - (-3)(-1) ) + 0( (-3)(0)  - (1)(-4) ) + 1( (-1)(-4) -(-4)(0) )}{M}\\
+        &\text{where}\\
+        &M = 1( (0)(-.583) - (-.573)(-1) ) + -1( (-.576)(-1) - (1)(-.583) ) + 0( (1)(-.573) - (0)(-.576) )\\
+        &\text{which simplifies to:}\\
+    \end{align*}
+
+    \begin{align*}
+        &\beta = 0.361\\
+        &\gamma = 0.297\\
+        &t = 6.351\\
+        &\text{So $\vec{r}$ intersects the triangle at time t = 6.351}\\
+        &\text{To find the coordinates of the intersection point we recall that the intersection is:}\\
+        &\vec{e} + t\vec{d} = \vec{a} + \beta(\vec{b} - \vec{a}) + \gamma(\vec{c} - \vec{a})\\
+        &\text{So the right side of this equation will when used with values inserted is:}\\
+        &\vec{a} + \beta(\vec{b} - \vec{a}) + \gamma(\vec{c} - \vec{a})\\
+        &(1,0,0) + \beta((0,1,0) - (1,0,0)) + \gamma((0,0,1) - (1,0,0))\\
+        =&(1,0,0) + (.361)((0,1,0) - (1,0,0)) + (.297)((0,0,1) - (1,0,0))\\
+        =&(1,0,0) + .361(-1,1,0) + .297(-1,0,1)\\
+        =&\fbox{(.342, .361, .297)}\\
+        &\text{This is the coordinate of the intersection of our ray with the triangle.}\\
+        &\text{The surface normal $\vec{n}$ at the intersection point is:}\\
+        \vec{n} =& \frac{(\vec{b} - \vec{a}) \times (\vec{c} - \vec{a})}{\norm{\vec{b} - \vec{a}) \times (\vec{c} - \vec{a})}}\\
+        &(\vec{b} - \vec{a}) \times (\vec{c} - \vec{a}) = (1,1,1)\\
+        \vec{n} =& \frac{(1,1,1)}{\sqrt{1^2 + 1^2 + 1^2}} = (\frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}})\\
     \end{align*}
 
 
