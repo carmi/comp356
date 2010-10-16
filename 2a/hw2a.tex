@@ -1,0 +1,222 @@
+% hw2a.tex - Comp356 HW 2A Answers
+
+% Declare page size and style.
+\documentclass[a4paper, 12pt]{article}
+\pagestyle{plain}
+\usepackage{fullpage}
+
+% Declare which packages to use..
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% Define custom commands for the document.
+\newcommand{\abs}[1]{\lvert#1\rvert}
+\newcommand{\norm}[1]{\lVert#1\rVert}
+
+\input{./utils.tex}
+
+\begin{document}
+\hwheader{Comp 356: Computer Graphics\\Homework 2A: Ray-tracing geometry}
+
+\begin{enumerate}
+    \item \textbf{Problem:} Assuming the standard camera frame based on the viewpoint, look-at point, and up- direction, compute the camera frame basis expressed as linear combinations of the standard basis.  Your camera frame basis must be orthonormal.
+
+        \textbf{Solution:} First, we must compute the vectors that will compose our basis \(\vec{u}, \vec{v}, \vec{w}\).
+        \(\vec{w}\) is opposite the view direction so
+        %Compute w
+        \begin{align*}
+        \vec{w} =& \frac{\vec{e} - \vec{P}}{\norm{\vec{e} - \vec{P}}}\\
+        \vec{e} - \vec{P} =& (4,4,4) - (-1,-1,-1) = (3,3,3)\\
+        \vec{w} =& \frac{(3,3,3)}{\norm{(3,3,3)}} = \frac{(3,3,3)}{\sqrt{3^2 + 3^2 + 3^2}} = \fbox{$(\frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}})$}\\
+        %Compute u
+        \vec{u} =& \frac{\vec{up} \times \vec{w}}{\norm{\vec{up} \times \vec{w}}}\\
+        \vec{up} \times \vec{w} =& (0,1,0) \times (\frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}})\\
+        \vec{up} \times \vec{w} =& (1\frac{1}{\sqrt{3}} - 0\frac{1}{\sqrt{3}}, 0\frac{1}{\sqrt{3}} - 0\frac{1}{\sqrt{3}}, 0\frac{1}{\sqrt{3}} - 1\frac{1}{\sqrt{3}}) = (\frac{1}{\sqrt{3}}, 0, -\frac{1}{\sqrt{3}}) \\
+        \vec{u} =& \frac{(\frac{1}{\sqrt{3}}, 0, -\frac{1}{\sqrt{3}})}{\norm{(\frac{1}{\sqrt{3}}, 0, -\frac{1}{\sqrt{3}}}} = \frac{(\frac{1}{\sqrt{3}}, 0, -\frac{1}{\sqrt{3}})}{\sqrt{\frac{1}{\sqrt{3}}^2 + 0^2 - \frac{1}{\sqrt{3}}^2}} = \frac{(\frac{1}{\sqrt{3}}, 0, -\frac{1}{\sqrt{3}})}{\sqrt{\frac{2}{3}}} = \fbox{$(\frac{1}{\sqrt{2}}, 0, -\frac{1}{\sqrt{2}})$}\\
+        %Compute v
+        \vec{v} =& \vec{w} \times \vec{u} = (\frac{1}{\sqrt{2}}, 0, -\frac{1}{\sqrt{2}}) \times (\frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}})\\
+        &\text{Dot product calculation is same as above, omitted for brevity.}\\
+        \vec{v} =& \fbox{$(-\frac{1}{\sqrt{6}}, \frac{2}{\sqrt{6}}, -\frac{1}{\sqrt{6}} $}\\
+        %Show as linear combination of standard basis
+        &\text{These vectors form the orthonormal basis for the camera frame and}\\
+        &\text{can be expressed as linear combinations of the standard basis:}\\
+        \vec{u} =& \frac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\frac{1}{\sqrt{2}}\vec{k}\\
+        \vec{v} =& -\frac{1}{\sqrt{6}}\vec{i} + \frac{2}{\sqrt{6}}\vec{j} -\frac{1}{\sqrt{6}}\vec{k}\\
+        \vec{w} =& \frac{1}{\sqrt{3}}\vec{i} + \frac{1}{\sqrt{3}}\vec{j} + \frac{1}{\sqrt{3}}\vec{k}\\
+        \end{align*}
+
+    \item \textbf{Problem:} Assuming the standard viewing rectangle that lies in a plane that is orthogonal to \(\vec{w}\) and such that \(\vec{e} - t\vec{w}\) intersects the viewing rectangle in its center, give the coordinates of the lower-left and upper-right corners of the view rectangle in the world frame.
+
+        \textbf{Solution:} Let the view rectangle have width (W) = 8 units and height (H) = 6 units and be located 1 unit from the view point (so d = 1). The lower-left coordinate of the view rectangle is \( ( $-$\frac{W}{2}, $-$\frac{H}{2}, $-$d) \) and the upper-right coordinate is \( (\frac{W}{2}, \frac{H}{2}, $-$d) \). However, the view rectangle is defined in the camera frame $\vec{u}$, $\vec{v}$, $\vec{w}$ so the lower-left point expressed as a linear combination of the camera frame is:
+        \begin{align*}
+            &-\frac{W}{2}\vec{u} - \frac{H}{2}\vec{v} -d\vec{w}\\
+            &\text{W=8, H=6, d=1, so we get}\\
+            &= -4\vec{u} - 3\vec{v} -1\vec{w}\\
+            &\text{We now perform a change of basis to the world frame}\\
+            P_{lower left} &= \text{viewpoint $\vec{e}$} + (-4\vec{u} - 3\vec{v} -1\vec{w})\\
+            P_{lower left} &= \vec{e} -4\vec{u} - 3\vec{v} -1\vec{w})\\
+            P_{lower left} &= \vec{e} -4\left(\tfrac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\tfrac{1}{\sqrt{2}}\vec{k}\right) - 3\left( -\tfrac{1}{\sqrt{6}}\vec{i} + \tfrac{2}{\sqrt{6}}\vec{j} -\tfrac{1}{\sqrt{6}}\vec{k} \right) - 1\left(\tfrac{1}{\sqrt{3}}\vec{i} + \tfrac{1}{\sqrt{3}}\vec{j} + \tfrac{1}{\sqrt{3}}\vec{k}\right)\\
+            P_{lower left} &= \vec{e} + \left( \tfrac{-4}{\sqrt{2}} + \tfrac{3}{\sqrt{6}} -\tfrac{1}{\sqrt{3}} \right) \vec{i} + \left(\tfrac{-6}{\sqrt{6}} - \tfrac{1}{\sqrt{3}} \right) \vec{j} + \left( \tfrac{4}{\sqrt{2}} +\tfrac{3}{\sqrt{6}} - \tfrac{1}{\sqrt{3}} \right) \vec{k}\\
+            P_{lower left} &= 4\vec{i}, 4\vec{j}, 4\vec{k} + \left( \tfrac{-4}{\sqrt{2}} + \tfrac{3}{\sqrt{6}} -\tfrac{1}{\sqrt{3}} \right) \vec{i} + \left(\tfrac{-6}{\sqrt{6}} - \tfrac{1}{\sqrt{3}} \right) \vec{j} + \left( \tfrac{4}{\sqrt{2}} +\tfrac{3}{\sqrt{6}} - \tfrac{1}{\sqrt{3}} \right) \vec{k}\\
+            P_{lower left} &= 1.819\vec{i} + 0.973\vec{j} + 7.476\vec{k}\\
+            &\text{And so the coordinates of the lower left corner in world frame are:}\\
+            P_{lower left} &= (1.819, 0.973, 7.476)\\
+        \end{align*}
+        And we repeat this process to find the upper-right corner coordinate, beginning with it being defined in the camera frame as \( (\frac{W}{2}, \frac{H}{2}, -d) \).
+        \begin{align*}
+            &\frac{W}{2}\vec{u} + \frac{H}{2}\vec{v} -d\vec{w}\\
+            &\text{W=8, H=6, d=1, so we get}\\
+            &= 4\vec{u} + 3\vec{v} -1\vec{w}\\
+            &\text{We now perform a change of basis to the world frame}\\
+        \end{align*}
+        \begin{align*}
+            P_{upper right} &= \text{viewpoint $\vec{e}$} + (4\vec{u} + 3\vec{v} -1\vec{w})\\
+            P_{upper right} &= \vec{e} + 4\vec{u} + 3\vec{v} -1\vec{w})\\
+            P_{upper right} &= \vec{e} + 4\left(\tfrac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\tfrac{1}{\sqrt{2}}\vec{k}\right) + 3\left(-\tfrac{1}{\sqrt{6}}\vec{i} + \tfrac{2}{\sqrt{6}}\vec{j} -\tfrac{1}{\sqrt{6}}\vec{k}\right) - 1\left(\tfrac{1}{\sqrt{3}}\vec{i} + \tfrac{1}{\sqrt{3}}\vec{j} + \tfrac{1}{\sqrt{3}}\vec{k}\right)\\
+            P_{upper right} &= \vec{e} + \left( \tfrac{4}{\sqrt{2}} - \tfrac{3}{\sqrt{6}} -\tfrac{1}{\sqrt{3}} \right) \vec{i} + \left( \tfrac{6}{\sqrt{6}} - \tfrac{1}{\sqrt{3}} \right) \vec{j} + \left( -\tfrac{4}{\sqrt{2}} -\tfrac{3}{\sqrt{6}} - \tfrac{1}{\sqrt{3}} \right) \vec{k}\\
+            P_{upper right} &= 4\vec{i}, 4\vec{j}, 4\vec{k} + \left( \tfrac{4}{\sqrt{2}} - \tfrac{3}{\sqrt{6}} -\tfrac{1}{\sqrt{3}} \right) \vec{i} + \left( \tfrac{6}{\sqrt{6}} - \tfrac{1}{\sqrt{3}} \right) \vec{j} + \left( -\tfrac{4}{\sqrt{2}} -\tfrac{3}{\sqrt{6}} - \tfrac{1}{\sqrt{3}} \right) \vec{k}\\
+            P_{upper right} &= 5.026\vec{i} + 8.872\vec{j} + -0.631\vec{k}\\
+            &\text{And so the coordinates of the upper right corner in world frame are:}\\
+            P_{upper right} &= (5.026, 8.872, -0.631)\\
+            \end{align*}
+        \item \textbf{Problem:} Let $\vec{r}$ = $\vec{e}$ + t$\vec{d}$ be the viewing ray through pixel (400, 300). What is $\vec{d}$ in the world frame?
+
+        \textbf{Solution:}We first map the screen pixel (400, 300) to a point (in the camera frame) on our view rectangle of 800 $\times$ 600 pixels. The vector from viewpoint $\vec{e}$ to this point on the view rectangle is $\vec{d}$, and we lastly show it in the world frame.
+    \begin{align*}
+        &\text{The pixel$(i, j)$ maps to following point on the view rectangle (in camera frame):}\\
+        &\left( -\frac{W}{2} + \frac{i + 0.5}{n_x}W, -\frac{H}{2} + \frac{j + 0.5}{n_y}H, -d \right) \text{ so}\\
+        &Pixel(400, 300) : \left( -\frac{8}{2} + \frac{400 + 0.5}{800}8, -\frac{6}{2} + \frac{300 + 0.5}{600}6, -1 \right)\\
+        &= (0.005, 0.005, -1)\\
+    \end{align*}
+        Because $\vec{e}$ is the origin of the camera frame, this point on the view rectangle is the same as the vector from the origin to the point. So this is $\vec{d}$ in the camera frame. We now perform a change of basis to standard basis (similarly to Problem 2 above).
+        \begin{align*}
+            \vec{d} &= (0.005, 0.005, -1) = 0.005\vec{u} + 0.005\vec{v} - 1\vec{w}\\
+            \vec{d} &= 0.005\left( \tfrac{1}{\sqrt{2}}\vec{i} + 0\vec{j} -\tfrac{1}{\sqrt{2}}\vec{k} \right) + 0.005\left(-\tfrac{1}{\sqrt{6}}\vec{i} + \tfrac{2}{\sqrt{6}}\vec{j} -\tfrac{1}{\sqrt{6}}\vec{k} \right) - 1\left( \tfrac{1}{\sqrt{3}}\vec{i} + \tfrac{1}{\sqrt{3}}\vec{j} + \tfrac{1}{\sqrt{3}}\vec{k} \right)\\
+            \vec{d} &= -.576\vec{i} - .573\vec{j} -.583\vec{k}\\
+    \end{align*}
+
+    \item \textbf{Problem:} If $\vec{r}$ is the viewing ray through pixel (400, 300), at what time does $\vec{r}$ intersect the sphere centered at the origin with radius 1? What are the coordinates of the intersection point?  What is the surface normal at the intersection point?
+        \textbf{Solution:} $\vec{p}(t) = \vec{e} + t\vec{d}$ The sphere is centered at the origin, so $\vec{c}$ = (0, 0, 0) On page 77 of our text, we have a large quadratic formula for solving for t. It is:
+        \begin{align*}
+            t =& \frac{-\vec{d}\cdot(\vec{e}-\vec{c}) \pm \sqrt{(\vec{d}\cdot(\vec{e}-\vec{c}))^2 - (\vec{d}\cdot\vec{d})\left( (\vec{e}-\vec{c})\cdot(\vec{e}-\vec{c}) - R^2 \right)}}{\vec{d}\cdot\vec{d}}\\
+            &\text{We note that $\vec{c}$ is at the origin so $\vec{e} - \vec{c} = \vec{e}$.}\\
+            t =& \frac{-\vec{d}\cdot\vec{e} \pm \sqrt{(\vec{d}\cdot(\vec{e})^2 - (\vec{d}\cdot\vec{d})\left( \vec{e}\cdot\vec{e} - R^2 \right)}}{\vec{d}\cdot\vec{d}}\\
+            &\text{We begin plugging in values and get:}\\
+            t =& \frac{6.928 \pm \sqrt{47.999 - (0.999)\left( 48 - 1^2 \right)}}{0.999}\\
+            t =& \frac{6.928 \pm \sqrt{1.046}}{0.999}\\
+            t =& 7.959\\
+            t =& 5.911\\
+            &\text{So the coordinates of the first intersection are:}\\
+            p(5.911) =& \vec{e} + (5.911)\vec{d} = (.595, .613, .554)\\
+            &\text{And the coordinates of the second intersection are:}\\
+            p(7.959) =& \vec{e} + (7.959)\vec{d} = (-.584, -.560, -.640)\\
+            &\text{The second intersection point is on the back of the sphere,}\\
+            &\text{so our main intersection point is the first one of (.595, .613, .554)}\\
+            &\text{The surface normal at this first point is:}\\
+            \vec{n} =& \frac{(\vec{p} - \vec{c}}{\norm{\vec{p} - \vec{c}}} = \frac{\vec{p}}{\norm{\vec{p}}} = \frac{(.595, .613, .554)}{\sqrt{(.595^2 + .613^2 + .554^2}} = (.584, .602, .554)\\
+        \end{align*}
+
+    \item \textbf{Problem:} If $\vec{r}$ is the viewing ray through pixel (400, 300), at what time does $\vec{r}$ intersect the triangle with corners (1, 0, 0), (0, 1, 0), and (0, 0, 1) (in the world frame)? What are the coordinates of the intersection point? What is the surface normal at the intersection point?
+
+        \textbf{Solution:} To calculate a ray-triangle intersection, we must setup a system of equations with three equations and three unknowns and solve. In general, for a triangle with vertices $\vec{a}$, $\vec{b}$ and $\vec{c}$ the intersection will occur when:
+    \begin{align*}
+        &\vec{e} + t\vec{d} = \vec{a} + \beta(\vec{b} - \vec{a}) + \gamma(\vec{c} - \vec{a})\\
+        &\text{To solve for some $t, \beta, \gamma$ we expand to vector form which can be rewritten}\\
+        &\text{as a system of linear equations:}\\
+        &\begin{bmatrix}
+            x_a-x_b & x_a - x_c & x_d \\
+            y_a-y_b & y_a - y_c & y_d \\
+            z_a-z_b & z_a - z_c & z_d
+        \end{bmatrix}
+        \begin{bmatrix}
+            \beta \\
+            \gamma \\
+            t
+        \end{bmatrix}
+        =
+        \begin{bmatrix}
+            x_a - x_e \\
+            y_a - y_e \\
+            z_a - z_e
+        \end{bmatrix}\\
+        &\text{We plug in our known values of:}\\
+        &\vec{a} = (1,0,0)\\
+        &\vec{b} = (0,1,0)\\
+        &\vec{c} = (0,0,1)\\
+        &\vec{d} = (-.576, -.573, -.583)\\
+        &\vec{e} = (4,4,4)\\
+        &\begin{bmatrix}
+            1 & 1 & -.576 \\
+            -1 & 0 & -.573 \\
+            0 & -1 & -.583
+        \end{bmatrix}
+        \begin{bmatrix}
+            \beta \\
+            \gamma \\
+            t
+        \end{bmatrix}
+        =
+        \begin{bmatrix}
+            -3 \\
+            -4 \\
+            -4
+        \end{bmatrix}\\
+        &\text{The fastest method to solve a 3 $\times$ 3 linear system is Cramer's rule.}\\
+        &\text{For a general matrix with dummy variables:}\\
+         &\begin{bmatrix}
+             a & d & g\\
+             b & e & h\\
+             c & f & i
+        \end{bmatrix}
+        \begin{bmatrix}
+            \beta \\
+            \gamma \\
+            t
+        \end{bmatrix}
+        =
+        \begin{bmatrix}
+            j\\
+            k\\
+            l
+        \end{bmatrix}\\
+        &\text{Cramer's rule gives us:}\\
+        &\beta = \frac{j(ei-hf) + k(gf -di) + l(dh -eg)}{M}\\
+        &\gamma = \frac{i(ak -jb) + h(jc -al) + g(bl -kc)}{M}\\
+        &t = \frac{f(ak -jb) + e(jc -al) + d(bl -kc)}{M}\\
+        &\text{where}\\
+        &M = a(ei -hf) + b(gf - di) + c(dh - eg)\\
+        &\text{Using our matrix instead of dummy variables we get:}\\
+        %Use our real values
+        &\beta = \tfrac{-3( (0)(-.583) - (-.573)(-1) ) + -4( (-.576)(-1) - (1)(-.583) ) + -4( (1)(-.573) - (0)(-.576) )}{M}\\
+        &\gamma = \tfrac{-.583( (1)(-4) -(-3)(-1) ) + -.573( (-3)(0) - (1)(-4) ) + -.576( (-1)(-4) - (-4)(0))}{M}\\
+        &t = \tfrac{-1( (1)(-4) - (-3)(-1) ) + 0( (-3)(0)  - (1)(-4) ) + 1( (-1)(-4) -(-4)(0) )}{M}\\
+        &\text{where}\\
+        &M = 1( (0)(-.583) - (-.573)(-1) ) + -1( (-.576)(-1) - (1)(-.583) ) + 0( (1)(-.573) - (0)(-.576) )\\
+        &\text{which simplifies to:}\\
+    \end{align*}
+
+    \begin{align*}
+        &\beta = 0.361\\
+        &\gamma = 0.297\\
+        &t = 6.351\\
+        &\text{So $\vec{r}$ intersects the triangle at time t = 6.351}\\
+        &\text{To find the coordinates of the intersection point we recall that the intersection is:}\\
+        &\vec{e} + t\vec{d} = \vec{a} + \beta(\vec{b} - \vec{a}) + \gamma(\vec{c} - \vec{a})\\
+        &\text{So the right side of this equation will when used with values inserted is:}\\
+        &\vec{a} + \beta(\vec{b} - \vec{a}) + \gamma(\vec{c} - \vec{a})\\
+        &(1,0,0) + \beta((0,1,0) - (1,0,0)) + \gamma((0,0,1) - (1,0,0))\\
+        =&(1,0,0) + (.361)((0,1,0) - (1,0,0)) + (.297)((0,0,1) - (1,0,0))\\
+        =&(1,0,0) + .361(-1,1,0) + .297(-1,0,1)\\
+        =&\fbox{(.342, .361, .297)}\\
+        &\text{This is the coordinate of the intersection of our ray with the triangle.}\\
+        &\text{The surface normal $\vec{n}$ at the intersection point is:}\\
+        \vec{n} =& \frac{(\vec{b} - \vec{a}) \times (\vec{c} - \vec{a})}{\norm{\vec{b} - \vec{a}) \times (\vec{c} - \vec{a})}}\\
+        &(\vec{b} - \vec{a}) \times (\vec{c} - \vec{a}) = (1,1,1)\\
+        \vec{n} =& \frac{(1,1,1)}{\sqrt{1^2 + 1^2 + 1^2}} = (\frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}}, \frac{1}{\sqrt{3}})\\
+    \end{align*}
+
+    \item \textbf{Problem:} Suppose you have a viewing rectangle of dimensions W × H and a screen window of w × h pixels, where W/H < w/h (in other words, there is an aspect-ratio mismatch between the viewing rectangle and screen window). What range of window pixels (in both x- and y-directions) will be mapped onto the viewing rectangle to ensure that there is no distortion, one dimension of the screen window is filled, and the image is centered (to within a 1-pixel error) in the other dimension?
+
+        \textbf{Solution:} There are two possible scenarios. If the viewing rectangle aspect ratio is W/H is greater than the screen window aspect ratio w/h than we fill the viewing rectangle completely horizontally and place filler pixels (likely black) at the bottom and at the top of the viewing rectangle. In this case the viewing rectangle is wider than screen window and we place half the blank pixels below the image and half above the image. This number of pixels will be the height of the screen window multiplied by aspect ratio of the viewing rectangle divied by two, because half will go on the bottom and half will go above. In the other scenario, if the viewing rectangle aspect ration is not wider than the screen window aspect ratio, so W/H < w/h than we fill the viewing rectangle completely vertically and add filler pixels along the sides to create blank space. This process of adding space is the same as the first scenario.
+\end{enumerate}
+\end{document}
