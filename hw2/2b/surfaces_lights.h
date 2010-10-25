@@ -4,6 +4,9 @@
 #ifndef SURFACES_LIGHTS_H
 #define SURFACES_LIGHTS_H
 
+#include <geom356.h>
+#include <list356.h>
+
 /** Get a list of surfaces.  Each element of the list will be of type
  *  <code>surface_t*</code>.
  *

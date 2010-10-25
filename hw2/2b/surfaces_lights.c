@@ -2,7 +2,9 @@
  *
  */
 
+#include <stdlib.h>
 #include "list356.h"
+#include "geom356.h"
 
 #include "debug.h"
 
