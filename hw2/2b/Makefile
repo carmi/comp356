@@ -10,7 +10,7 @@ OBJS=ms_driver.o hw1p12.o hw1p3.o
 
 SOLUTION_FILES=Makefile hw2bp1.c
 
-HW2BP1_DEPENDENCIES=hw2bp1.o color.h debug.h Makefile surface.c surface.h \
+HW2BP1_DEPENDENCIES=hw2bp1.o color.h debug.h surface.c surface.h \
 		   surfaces_lights.c surfaces_lights.h
 
 hw2bp1 : $(HW2BP1_DEPENDENCIES)
