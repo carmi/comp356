@@ -45,6 +45,7 @@ void handle_reshape(int w, int h);
 
 // Function Declarations
 void set_camera_frame(point3_t* e, point3_t* P, vector3_t* up);
+void get_dir_vec(float i, float j, vector3_t* result);
 
 
 
@@ -106,13 +107,28 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
+/**
+ * Display callback that iterates through framebuffer and ray traces.
+ */
+void draw_image() {
+    /*
+    foreach pixel in framebuffer do:
+        ray3_t ray;
+        ray->base = eye;
+        ray->dir = get_dir_vec(pixel_i, pixel_j)
+        color = ray_trace(ray, t0, t1, srec, ...)
+        set pixel in framebuffer to color
+    */
+}
+
 /** Display callback that just clears the window to the clear color.
  */
 void no_display() {
     glClear(GL_COLOR_BUFFER_BIT) ;
 }
 
-/** Handle reshape events.  This is also run on first initialization of window. Here we create our in-memory framebuffer.
+/** Handle reshape events.  This is also run on first initialization of window.
+ *  Here we create our in-memory framebuffer.
  *
  *  @param w the width of the resized window.
  *  @param h the height of the resized window.
@@ -125,6 +141,7 @@ void handle_reshape(int w, int h) {
     // Create framebuffer - 3 dimensional array of float
     fb = malloc(win_width * win_height * 3 * sizeof(float));
     bzero(fb, (win_width*win_height*3)*sizeof(float));
+
 }
 
 /**
@@ -149,4 +166,32 @@ void set_camera_frame(point3_t* e, point3_t* P, vector3_t* up) {
 
     // Calculate v
     cross(w, u, v);
+}
+
+
+/**
+ * Map a screen pixel (i, j) to a point (in the world frame) on our view
+ * rectangle/plane and calculate the vector from this point to our viewpoint.
+ *
+ * @param i - the column of the pixel.
+ * @param j - the row of the pixel.
+ * @param result - pointer to vector that will be assigned the result in world
+ *                 frame.
+ */
+void get_dir_vec(float i, float j, vector3_t* result) {
+    float x, y, z;
+    x = (-view_plane_width/2) + ( ((i + 0.5)/win_width)*view_plane_width);
+    y = (-view_plane_height/2) + ( ((j + 0.5)/win_height)*view_plane_height);
+    z = -view_plane_dist;
+
+    // result is vector d in Shirley and Marschner notation.
+    // Perform a change of basis on the vector result from camera frame to
+    // world frame.
+    vector3_t tmp_x, tmp_y, tmp_z;
+    multiply(u, x, &tmp_x);
+    multiply(v, y, &tmp_y);
+    multiply(w, z, &tmp_z);
+    // Now sum tmp_x, tmp_y, tmp_z
+    add(&tmp_x, &tmp_y, &tmp_x);
+    add(&tmp_x, &tmp_z, result);
 }
