@@ -10,41 +10,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "debug.h"
 #include "geom356.h"
 #include "surface.h"
 
 #define MALLOC1(t) (t *)(malloc(sizeof(t)))
-
-// A marginally-clever debugging function that expends to a no-op
-// when NDEBUG is defined and otherwise prints its string formatting
-// arguments to stderr.
-#ifdef NDEBUG
-#define debug(fmt, ...) 
-#define debug_c(expr, fmt, ...)
-#else
-static void debug(const char* fmt, ...) {
-    va_list argptr ;
-    va_start(argptr, fmt) ;
-
-    char* fmt_newline ;
-    asprintf(&fmt_newline, "%s\n", fmt) ;
-    vfprintf(stderr, fmt_newline, argptr) ;
-    free(fmt_newline) ;
-    fflush(stderr) ;
-}
-static void debug_c(bool expr, const char* fmt, ...) {
-    if (expr) {
-        va_list argptr ;
-        va_start(argptr, fmt) ;
-
-        char* fmt_newline ;
-        asprintf(&fmt_newline, "%s\n", fmt) ;
-        vfprintf(stderr, fmt_newline, argptr) ;
-        free(fmt_newline) ;
-        fflush(stderr) ;
-    }
-}
-#endif
 
 /** The type of a triangle.  A triangle is specified by three points,
  *  which are the vertices of the triangle.  The surface normal
@@ -55,6 +25,18 @@ typedef struct _triangle_data_t {
      */
     point3_t a, b, c ;
 } triangle_data_t ;
+
+/**
+ * The type of a sphere. A sphere is specified by a center point (given by x-, y-, z-coordinates) and a radius.
+ */
+typedef struct _sphere_data_t {
+    /** The center point given by x,y,z and radius of the sphere.
+     */
+    float   x;
+    float   y;
+    float   z;
+    float radius;
+} sphere_data_t;
 
 
 /** A convenience function for setting the surface_t parameters.
@@ -87,6 +69,20 @@ static void set_sfc_data(surface_t* surface, void* data,
 static bool sfc_hit_tri(void* data, ray3_t* ray, float t0,
         float t1, hit_record_t* hit) ;
 
+/** Sphere-ray intersection function.
+ *  
+ *  @param data a <code>sphere_data_t</code> specifying the triangle.
+ *  @param ray the ray for which to calculate intersection.
+ *  @param t0 the minimum distance along the ray for the intersection.
+ *  @param t1 the maximum distance along the ray for the intersection.
+ *  @param hit the hit record to fill with data about the intersection.
+ *      All attributes except the surface reference itself will be
+ *      set if there is an intersection.
+ *  @return <code>true</code> if <code>ray</code> intersects the
+ *      sphere in the interval [t0, t1], <code>false</code> otherwise.
+ */
+static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
+        float t1, hit_record_t* hit) ;
 // SURFACE CREATION FUNCTIONS
 
 surface_t* make_triangle(point3_t a, point3_t b, point3_t c,
@@ -102,6 +98,23 @@ surface_t* make_triangle(point3_t a, point3_t b, point3_t c,
             diffuse_color, ambient_color, spec_color, phong_exp) ;
 
     return surface ;
+}
+
+surface_t* make_sphere(float x, float y, float z, float radius,
+        color_t* diffuse_color, color_t* ambient_color, color_t* spec_color,
+        float phong_exp) {
+    sphere_data_t* data = MALLOC1(sphere_data_t);
+
+    data->x = x;
+    data->y = y;
+    data->z = z;
+    data->radius = radius;
+
+    surface_t* surface = MALLOC1(surface_t);
+    set_sfc_data(surface, data, sfc_hit_sphere,
+            diffuse_color, ambient_color, spec_color, phong_exp);
+
+    return surface;
 }
 
 static void set_sfc_data(surface_t* surface, void* data,
@@ -172,6 +185,77 @@ static bool sfc_hit_tri(void* data,
     }
     else return false ;
 }
+
+static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
+        float t1, hit_record_t* hit) {
+
+    sphere_data_t* sdata = data;
+
+    // Use the notation of Shirley & Marschner, Section 4.4.1.
+    //t = (term1 +- discrim^.5)/denom
+    // For general quadratic: term1 = -b, discrim = b^2 - 4ac, denom = 2a
+    float R = sdata->radius;
+    float R2 = (float)sqrt((double)R);
+
+    // Create center point _c and pointer to it, c
+    point3_t _c = (point3_t){sdata->x, sdata->y, sdata->z};
+    point3_t* c = &_c;
+
+    point3_t* e = &ray->base;
+    vector3_t* d = &ray->dir;
+
+    // We know c, d, e, and R, calculate t.
+
+    // First calculate discriminant (term under square root)
+    float d_dot_d = dot(d,d);
+    float denom = d_dot_d;
+
+    vector3_t e_minus_c;
+    subtract((vector3_t*)e, (vector3_t*)c, &e_minus_c);
+
+    // (d dot e_minus_c)^2
+    float d_dot_ec2 = (float)sqrt(dot(d, &e_minus_c));
+
+    float discrim = d_dot_ec2 - d_dot_d * (dot(&e_minus_c, &e_minus_c) - R2);
+
+
+    // If discrim is positve (or zero), there are solutions
+    if (discrim >= 0) {
+        vector3_t _neg_d = (vector3_t){-(d->x), -(d->y), -(d->z)};
+        vector3_t* neg_d = &_neg_d;
+
+        // (negative d) dot (e minus c)
+        float term1 = dot(neg_d, &e_minus_c);
+        float sqrt_discrim = (float)sqrt((double)discrim); 
+
+        float t = (term1 + sqrt_discrim ) / denom;
+
+        // If discrim is zero, the ray grazes the sphere, touching it at
+        // exactly one point.  Calculate second solution if discrim is not 0.
+        if (!(discrim == 0)) {
+            // Calculate t2, and if t2 < t, set t2 as t.
+            float t2 = (term1 - sqrt_discrim ) / denom;
+            if (t2 < t) {
+                t = t2;
+            }
+        }
+        hit->t = t;
+        //fill in hit_pt and hit_normal vector
+        // intersection point is e + td
+        vector3_t td;
+        multiply(d, t, &td);
+        pv_add(e, &td, &(hit->hit_pt));
+
+        // unit normal is (p-c)/R
+        vector3_t p_minus_c;
+        pv_subtract(&(hit->hit_pt), c, &p_minus_c);
+        divide(&p_minus_c, R, &(hit->normal));
+        return true;
+    }
+    // If discrim is negative, line and sphere do not intersect
+    else return false;
+}
+
 
 bool sfc_hit(surface_t* sfc, ray3_t* ray, float t0, float t1,
         hit_record_t* hit) {
