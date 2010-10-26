@@ -30,6 +30,8 @@
 #include "list356.h"
 #include "geom356.h"
 #include "surfaces_lights.h"
+#include "surface.h"
+#include <float.h>
 
 #include "debug.h"
 
@@ -40,14 +42,14 @@
 int win_width, win_height;
 
 // GLUT Function Declarations
+void draw_image(void);
 void no_display(void);
 void handle_reshape(int w, int h);
 
 // Function Declarations
 void set_camera_frame(point3_t* e, point3_t* P, vector3_t* up);
 void get_dir_vec(float i, float j, vector3_t* result);
-
-
+float* fb_offset(int x, int y, int c);
 
 // Window identifiers.
 int main_win;    // Main top-level window.
@@ -78,26 +80,32 @@ int main(int argc, char **argv) {
     // Get surfaces and lights from surfaces_lights.c
     surfaces = get_surfaces();
     lights = get_lights();
-
+    
     // Set view_data and view_plane
+    eye = malloc(sizeof(point3_t));
+    look_at_point = malloc(sizeof(point3_t));
+    up_dir = malloc(sizeof(point3_t));
     set_view_data(eye, look_at_point, up_dir);
     set_view_plane(&view_plane_dist, &view_plane_width, &view_plane_height);
-
+    
     // Calculate camera frame
+    u = malloc(sizeof(vector3_t));
+    v = malloc(sizeof(vector3_t));
+    w = malloc(sizeof(vector3_t));
     set_camera_frame(eye, look_at_point, up_dir);
-
+    
     // Initialize the drawing window.
     debug("main(): initialize main window.") ;
     glutInitWindowSize(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT);
     glutInitWindowPosition(0, 0);
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-
+    
     // Create the main window, set the display callback.
     debug("main(): create main window.") ;
     main_win = glutCreateWindow("A Ray Tracer");
-    glutDisplayFunc(no_display);
-    //glutDisplayFunc(draw_image);
+    // glutDisplayFunc(no_display);
+    glutDisplayFunc(draw_image);
     glutReshapeFunc(handle_reshape);
     
     // Enter the main event loop.
@@ -111,14 +119,43 @@ int main(int argc, char **argv) {
  * Display callback that iterates through framebuffer and ray traces.
  */
 void draw_image() {
-    /*
-    foreach pixel in framebuffer do:
-        ray3_t ray;
-        ray->base = eye;
-        ray->dir = get_dir_vec(pixel_i, pixel_j)
-        color = ray_trace(ray, t0, t1, srec, ...)
-        set pixel in framebuffer to color
-    */
+    for (int c = 0; c < win_width; c++) {
+        for (int r = 0; r < win_height; r++) {
+            // Compute point on view rectangle corresponding to pixel (c, r)
+            // This point will be in terms of the camera frame.
+            float x = (-view_plane_width / 2)  + ((c + 0.5) / win_width) *
+                (view_plane_width);
+            float y = (-view_plane_height / 2) + ((r + 0.5) / win_height) *
+                (view_plane_height);
+            
+            // Create base and dir of ray.
+            ray3_t *currentRay = malloc(sizeof(ray3_t));
+            currentRay->base = *eye;
+            vector3_t *rayDir = malloc(sizeof(vector3_t));
+            rayDir->x = x; rayDir->y = y; rayDir->z = -view_plane_dist;
+            currentRay->dir = *rayDir;
+            
+            float t0 = 1;
+            float t1 = FLT_MAX;
+            
+            hit_record_t *rec = malloc(sizeof(rec));
+            hit_record_t *srec = malloc(sizeof(srec));
+            
+            list356_itr_t *surfacesIterator = lst_iterator(surfaces);
+            while (lst_has_next(surfacesIterator)) {
+                surface_t *currentSurface = lst_next(surfacesIterator);
+                if (sfc_hit(currentSurface, currentRay, t0, t1, rec)) {
+                    
+                }
+            }
+            lst_iterator_free(surfacesIterator);
+            free(srec);
+            free(rec);
+            free(rayDir);
+            free(currentRay);
+        }
+    }
+    debug("Done iterating through pixels.");
 }
 
 /** Display callback that just clears the window to the clear color.
@@ -134,14 +171,13 @@ void no_display() {
  *  @param h the height of the resized window.
  */
 void handle_reshape(int w, int h) {
-    debug("handle_reshape(%d, %d)", w, h) ;
-    win_width = w ; 
-    win_height = h ;
+    debug("handle_reshape(%d, %d)", w, h);
+    win_width = w;
+    win_height = h;
 
     // Create framebuffer - 3 dimensional array of float
     fb = malloc(win_width * win_height * 3 * sizeof(float));
     bzero(fb, (win_width*win_height*3)*sizeof(float));
-
 }
 
 /**
@@ -194,4 +230,10 @@ void get_dir_vec(float i, float j, vector3_t* result) {
     // Now sum tmp_x, tmp_y, tmp_z
     add(&tmp_x, &tmp_y, &tmp_x);
     add(&tmp_x, &tmp_z, result);
+}
+
+// Returns the pointer into the framebuffer that corresponds
+// to pixel position (x, y) and color c.
+float* fb_offset(int x, int y, int c) {
+    return &fb[(x + 1) * (y + 1) * 3 - 3 + c];
 }
