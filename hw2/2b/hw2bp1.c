@@ -81,6 +81,7 @@ vector3_t* rt_v;
 vector3_t* rt_w;
 
 int main(int argc, char **argv) {
+    debug("main(): get surfaces and lights") ;
     // Get surfaces and lights from surfaces_lights.c
     surfaces = get_surfaces();
     lights = get_lights();
@@ -149,6 +150,7 @@ void draw_image() {
                         srec->t = rec->t;
                         srec->hit_pt = rec->hit_pt;
                         srec->normal = rec->normal;
+                        t1 = rec->t;
                     }
                 }
             }
@@ -171,11 +173,11 @@ void draw_image() {
                 
                 // lets set everything to green for now
                 // red
-                *fb_offset(c, r, 0) = 0.0f;
+                *fb_offset(c, r, 0) = diffuseColor->red;
                 // green
-                *fb_offset(c, r, 1) = 1.0f;
+                *fb_offset(c, r, 1) = diffuseColor->green;
                 // blue
-                *fb_offset(c, r, 2) = 0.0f;
+                *fb_offset(c, r, 2) = diffuseColor->blue;
             }
             
             lst_iterator_free(surfacesIterator);

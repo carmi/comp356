@@ -104,8 +104,9 @@ surface_t* make_triangle(point3_t a, point3_t b, point3_t c,
 surface_t* make_sphere(float x, float y, float z, float radius,
         color_t* diffuse_color, color_t* ambient_color, color_t* spec_color,
         float phong_exp) {
-    sphere_data_t* data = MALLOC1(sphere_data_t);
+    debug("make_sphere()");
 
+    sphere_data_t* data = MALLOC1(sphere_data_t);
     data->x = x;
     data->y = y;
     data->z = z;
