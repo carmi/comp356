@@ -39,6 +39,10 @@
 #define DEFAULT_WIN_HEIGHT 600
 
 #define MALLOC1(t) (t *)(malloc(sizeof(t)))
+#ifndef max
+    #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
+#endif
+
 
 // Window dimensions.
 int win_width, win_height;
@@ -166,18 +170,43 @@ void draw_image() {
                 float t = srec->t;
             
                 point3_t intersectionPoint = srec->hit_pt;
+
+                float red_light_iten = 0.0f;
+                float green_light_iten = 0.0f;
+                float blue_light_iten = 0.0f;
+                // Iterate through lights
+                list356_itr_t *lights_itr = lst_iterator(lights);
+                while (lst_has_next(lights_itr)) {
+                    light_t* cur_light = lst_next(lights_itr);
+                    point3_t* light_position = cur_light->position;
+
+                    // Incidence angle is position of light minus intersection
+                    // point
+                    vector3_t* incidence_angle = MALLOC1(vector3_t);
+                    pv_subtract(light_position, &intersectionPoint, &incidence_angle);
+                    normalize(&incidence_angle);
+
+                    color_t* light_color = cur_light->color;
+
+                    // Calculate light intensities for each of RGB
+                    // red
+                    red_light_iten += (diffuseColor->red * light_color->red *
+                            max(0, dot(&incidence_angle, &srec->normal)) );
+                    green_light_iten += (diffuseColor->green * light_color->green *
+                            max(0, dot(&incidence_angle, &srec->normal)) );
+                    blue_light_iten += (diffuseColor->blue * light_color->blue *
+                            max(0, dot(&incidence_angle, &srec->normal)) );
+                }
             
-                vector3_t normal = srec->normal;
                 
                 // Calculate as in 4.5.4. Use 1.0 for I_a?
                 
-                // lets set everything to green for now
                 // red
-                *fb_offset(c, r, 0) = diffuseColor->red;
+                *fb_offset(c, r, 0) = red_light_iten*diffuseColor->red;
                 // green
-                *fb_offset(c, r, 1) = diffuseColor->green;
+                *fb_offset(c, r, 1) = green_light_iten*diffuseColor->green;
                 // blue
-                *fb_offset(c, r, 2) = diffuseColor->blue;
+                *fb_offset(c, r, 2) = blue_light_iten*diffuseColor->blue;
             }
             
             lst_iterator_free(surfacesIterator);
