@@ -83,6 +83,7 @@ static bool sfc_hit_tri(void* data, ray3_t* ray, float t0,
  */
 static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
         float t1, hit_record_t* hit) ;
+        
 // SURFACE CREATION FUNCTIONS
 
 surface_t* make_triangle(point3_t a, point3_t b, point3_t c,
@@ -192,10 +193,10 @@ static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
     sphere_data_t* sdata = data;
 
     // Use the notation of Shirley & Marschner, Section 4.4.1.
-    //t = (term1 +- discrim^.5)/denom
+    // t = (term1 +- discrim^.5)/denom
     // For general quadratic: term1 = -b, discrim = b^2 - 4ac, denom = 2a
     float R = sdata->radius;
-    float R2 = (float)sqrt((double)R);
+    float R2 = R * R;
 
     // Create center point _c and pointer to it, c
     point3_t _c = (point3_t){sdata->x, sdata->y, sdata->z};
@@ -214,7 +215,9 @@ static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
     subtract((vector3_t*)e, (vector3_t*)c, &e_minus_c);
 
     // (d dot e_minus_c)^2
-    float d_dot_ec2 = (float)sqrt(dot(d, &e_minus_c));
+    // (d dot e_minus_c)
+    float d_dot_ec = dot(d, &e_minus_c);
+    float d_dot_ec2 = d_dot_ec * d_dot_ec;
 
     float discrim = d_dot_ec2 - d_dot_d * (dot(&e_minus_c, &e_minus_c) - R2);
 

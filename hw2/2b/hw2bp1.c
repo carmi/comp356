@@ -38,6 +38,8 @@
 #define DEFAULT_WIN_WIDTH 800
 #define DEFAULT_WIN_HEIGHT 600
 
+#define MALLOC1(t) (t *)(malloc(sizeof(t)))
+
 // Window dimensions.
 int win_width, win_height;
 
@@ -48,8 +50,10 @@ void handle_reshape(int w, int h);
 
 // Function Declarations
 void set_camera_frame(point3_t* e, point3_t* P, vector3_t* up);
-void get_dir_vec(float i, float j, vector3_t* result);
+void get_dir_vec(int i, int j, vector3_t* result);
 float* fb_offset(int x, int y, int c);
+void add_two_colors(color_t* a, color_t* b, color_t* sum);
+void mult_two_colors(color_t* a, color_t* b, color_t* product);
 
 // Window identifiers.
 int main_win;    // Main top-level window.
@@ -62,19 +66,19 @@ list356_t* surfaces;
 list356_t* lights;
 
 // View Data identifiers
-point3_t* eye;
-point3_t* look_at_point;
-vector3_t* up_dir;
+point3_t* rt_eye;
+point3_t* rt_look_at_point;
+vector3_t* rt_up_dir;
 
 // View Plane values
-float view_plane_dist;
-float view_plane_width;
-float view_plane_height;
+float rt_view_plane_dist;
+float rt_view_plane_width;
+float rt_view_plane_height;
 
 // Camera Frame Basis
-vector3_t* u;
-vector3_t* v;
-vector3_t* w;
+vector3_t* rt_u;
+vector3_t* rt_v;
+vector3_t* rt_w;
 
 int main(int argc, char **argv) {
     // Get surfaces and lights from surfaces_lights.c
@@ -82,17 +86,17 @@ int main(int argc, char **argv) {
     lights = get_lights();
     
     // Set view_data and view_plane
-    eye = malloc(sizeof(point3_t));
-    look_at_point = malloc(sizeof(point3_t));
-    up_dir = malloc(sizeof(point3_t));
-    set_view_data(eye, look_at_point, up_dir);
-    set_view_plane(&view_plane_dist, &view_plane_width, &view_plane_height);
+    rt_eye = MALLOC1(point3_t);
+    rt_look_at_point = MALLOC1(point3_t);
+    rt_up_dir = MALLOC1(vector3_t);
+    set_view_data(rt_eye, rt_look_at_point, rt_up_dir);
+    set_view_plane(&rt_view_plane_dist, &rt_view_plane_width, &rt_view_plane_height);
     
     // Calculate camera frame
-    u = malloc(sizeof(vector3_t));
-    v = malloc(sizeof(vector3_t));
-    w = malloc(sizeof(vector3_t));
-    set_camera_frame(eye, look_at_point, up_dir);
+    rt_u = MALLOC1(vector3_t);
+    rt_v = MALLOC1(vector3_t);
+    rt_w = MALLOC1(vector3_t);
+    set_camera_frame(rt_eye, rt_look_at_point, rt_up_dir);
     
     // Initialize the drawing window.
     debug("main(): initialize main window.") ;
@@ -121,33 +125,59 @@ int main(int argc, char **argv) {
 void draw_image() {
     for (int c = 0; c < win_width; c++) {
         for (int r = 0; r < win_height; r++) {
-            // Compute point on view rectangle corresponding to pixel (c, r)
-            // This point will be in terms of the camera frame.
-            float x = (-view_plane_width / 2)  + ((c + 0.5) / win_width) *
-                (view_plane_width);
-            float y = (-view_plane_height / 2) + ((r + 0.5) / win_height) *
-                (view_plane_height);
-            
-            // Create base and dir of ray.
-            ray3_t *currentRay = malloc(sizeof(ray3_t));
-            currentRay->base = *eye;
-            vector3_t *rayDir = malloc(sizeof(vector3_t));
-            rayDir->x = x; rayDir->y = y; rayDir->z = -view_plane_dist;
+            // Create ray.
+            ray3_t *currentRay = MALLOC1(ray3_t);
+            currentRay->base = *rt_eye;
+            vector3_t *rayDir = MALLOC1(vector3_t);
+            get_dir_vec(c, r, rayDir);
             currentRay->dir = *rayDir;
             
             float t0 = 1;
             float t1 = FLT_MAX;
             
-            hit_record_t *rec = malloc(sizeof(rec));
-            hit_record_t *srec = malloc(sizeof(srec));
+            hit_record_t *rec = MALLOC1(hit_record_t);
+            hit_record_t *srec = MALLOC1(hit_record_t);
             
             list356_itr_t *surfacesIterator = lst_iterator(surfaces);
+            bool hitSomething = false;
             while (lst_has_next(surfacesIterator)) {
                 surface_t *currentSurface = lst_next(surfacesIterator);
                 if (sfc_hit(currentSurface, currentRay, t0, t1, rec)) {
-                    
+                    if (rec->t < t1) {
+                        hitSomething = true;
+                        srec->sfc = rec->sfc;
+                        srec->t = rec->t;
+                        srec->hit_pt = rec->hit_pt;
+                        srec->normal = rec->normal;
+                    }
                 }
             }
+            
+            if (hitSomething) {
+                surface_t *closestSurface = srec->sfc;
+                color_t *diffuseColor = closestSurface->diffuse_color;
+                color_t *ambientColor = closestSurface->ambient_color;
+                color_t *specularColor = closestSurface->spec_color;
+                color_t *reflectionColor = closestSurface->refl_color;
+                float phongExponent = closestSurface->phong_exp;
+            
+                float t = srec->t;
+            
+                point3_t intersectionPoint = srec->hit_pt;
+            
+                vector3_t normal = srec->normal;
+                
+                // Calculate as in 4.5.4. Use 1.0 for I_a?
+                
+                // lets set everything to green for now
+                // red
+                *fb_offset(c, r, 0) = 0.0f;
+                // green
+                *fb_offset(c, r, 1) = 1.0f;
+                // blue
+                *fb_offset(c, r, 2) = 0.0f;
+            }
+            
             lst_iterator_free(surfacesIterator);
             free(srec);
             free(rec);
@@ -156,6 +186,13 @@ void draw_image() {
         }
     }
     debug("Done iterating through pixels.");
+    glWindowPos2s(0, 0);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glDrawPixels(win_width, win_height, GL_RGB, GL_FLOAT, fb);
+    
+    glFlush();
+    
+    glutSwapBuffers();
 }
 
 /** Display callback that just clears the window to the clear color.
@@ -193,40 +230,40 @@ void handle_reshape(int w, int h) {
  */
 void set_camera_frame(point3_t* e, point3_t* P, vector3_t* up) {
     // Calculate w
-    pv_subtract(e, P, w);
-    normalize(w);
+    pv_subtract(e, P, rt_w);
+    normalize(rt_w);
 
     // Calculate u
-    cross(up, w, u);
-    normalize(u);
+    cross(up, rt_w, rt_u);
+    normalize(rt_u);
 
     // Calculate v
-    cross(w, u, v);
+    cross(rt_w, rt_u, rt_v);
 }
 
 
 /**
  * Map a screen pixel (i, j) to a point (in the world frame) on our view
- * rectangle/plane and calculate the vector from this point to our viewpoint.
+ * rectangle/plane and calculate the vector from our viewpoint to this point.
  *
  * @param i - the column of the pixel.
  * @param j - the row of the pixel.
  * @param result - pointer to vector that will be assigned the result in world
  *                 frame.
  */
-void get_dir_vec(float i, float j, vector3_t* result) {
+void get_dir_vec(int i, int j, vector3_t* result) {
     float x, y, z;
-    x = (-view_plane_width/2) + ( ((i + 0.5)/win_width)*view_plane_width);
-    y = (-view_plane_height/2) + ( ((j + 0.5)/win_height)*view_plane_height);
-    z = -view_plane_dist;
-
+    x = (-rt_view_plane_width/2) + ( (((float)i + 0.5)/win_width)*rt_view_plane_width);
+    y = (-rt_view_plane_height/2) + ( (((float)j + 0.5)/win_height)*rt_view_plane_height);
+    z = -rt_view_plane_dist;
+    
     // result is vector d in Shirley and Marschner notation.
     // Perform a change of basis on the vector result from camera frame to
     // world frame.
     vector3_t tmp_x, tmp_y, tmp_z;
-    multiply(u, x, &tmp_x);
-    multiply(v, y, &tmp_y);
-    multiply(w, z, &tmp_z);
+    multiply(rt_u, x, &tmp_x);
+    multiply(rt_v, y, &tmp_y);
+    multiply(rt_w, z, &tmp_z);
     // Now sum tmp_x, tmp_y, tmp_z
     add(&tmp_x, &tmp_y, &tmp_x);
     add(&tmp_x, &tmp_z, result);
@@ -235,5 +272,19 @@ void get_dir_vec(float i, float j, vector3_t* result) {
 // Returns the pointer into the framebuffer that corresponds
 // to pixel position (x, y) and color c.
 float* fb_offset(int x, int y, int c) {
-    return &fb[(x + 1) * (y + 1) * 3 - 3 + c];
+    return &fb[(y * win_width + x) * 3 + (c)];
+}
+
+// Adds color a and color b into color sum.
+void add_two_colors(color_t* a, color_t* b, color_t* sum) {
+    sum->red = a->red + b->red;
+    sum->green = a->green + b->green;
+    sum->blue = a->blue + b->blue;
+}
+
+// Multiplies color a and color b into color product.
+void mult_two_colors(color_t* a, color_t* b, color_t* product) {
+    product->red = a->red * b->red;
+    product->green = a->green * b->green;
+    product->blue = a->blue * b->blue;
 }
