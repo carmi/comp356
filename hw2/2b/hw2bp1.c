@@ -197,11 +197,11 @@ void draw_image() {
                     float diffuse_max_term = max(0, dot(&light_dir, &srec.normal));
 
                     // Calculate light intensities for each of RGB
-                    red_light_iten += (specular_color->red * light_iten->red *
+                    red_light_iten += (diffuse_color->red * light_iten->red *
                              diffuse_max_term);
-                    green_light_iten += (specular_color->green * light_iten->green *
+                    green_light_iten += (diffuse_color->green * light_iten->green *
                             diffuse_max_term);
-                    blue_light_iten += (specular_color->blue * light_iten->blue *
+                    blue_light_iten += (diffuse_color->blue * light_iten->blue *
                             diffuse_max_term);
 
                     // Blinn-Phong Shading
@@ -221,23 +221,22 @@ void draw_image() {
                     float bp_max_term = (double) pow( max(0,bp_dot), (double) phong_exp);
 
                     // Calculate additional light intensities for each of RGB
-                    red_light_iten += (diffuse_color->red * light_iten->red *
+                    red_light_iten += (specular_color->red * light_iten->red *
                              bp_max_term);
-                    green_light_iten += (diffuse_color->green * light_iten->green *
+                    green_light_iten += (specular_color->green * light_iten->green *
                             bp_max_term);
-                    blue_light_iten += (diffuse_color->blue * light_iten->blue *
+                    blue_light_iten += (specular_color->blue * light_iten->blue *
                             bp_max_term);
                     }
-            
                 
                 // Calculate as in 4.5.4.
                 
                 // red
-                *fb_offset(c, r, 0) = red_light_iten*diffuse_color->red;
+                *fb_offset(c, r, 0) = red_light_iten;
                 // green
-                *fb_offset(c, r, 1) = green_light_iten*diffuse_color->green;
+                *fb_offset(c, r, 1) = green_light_iten;
                 // blue
-                *fb_offset(c, r, 2) = blue_light_iten*diffuse_color->blue;
+                *fb_offset(c, r, 2) = blue_light_iten;
             }
             
             lst_iterator_free(surfaces_itr);
