@@ -28,6 +28,7 @@ color_t LIGHT_GREY = {.6f, .6f, .6f} ;
 color_t DARK_GREY = {.2f, .2f, .2f} ;
 color_t BLACK = {0.0f, 0.0f, 0.0f} ;
 color_t PURPLE = {.5f, .2f, .5f} ;
+color_t RED = {1.0f, 0.0f, 0.0f};
 
 /** Create a list of surfaces.
  */
@@ -65,13 +66,13 @@ list356_t* get_surfaces() {
     lst_add(surfaces, tri2) ;
     
     // An infinite plane in the y=-1 plane.
-    // surface_t* plane = make_plane(
-    //                 (point3_t){-40, -1, 2},
-    //                 (point3_t){2, -1, 2},
-    //                 (point3_t){2, -1, -20},
-    //                 &LIGHT_GREY, &LIGHT_GREY, &BLACK, 10.0f);
-    // plane->refl_color = &DARK_GREY;
-    // lst_add(surfaces, plane);
+    surface_t* plane = make_plane(
+                    (point3_t){-40, -2, 2},
+                    (point3_t){2, -2, 2},
+                    (point3_t){2, -2, -20},
+                    &RED, &RED, &BLACK, 10.0f);
+    plane->refl_color = &RED;
+    lst_add(surfaces, plane);
     
     return surfaces ;
 
