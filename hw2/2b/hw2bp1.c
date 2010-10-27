@@ -142,10 +142,13 @@ int main(int argc, char **argv) {
  * Display callback that iterates through framebuffer and ray traces.
  */
 void draw_image() {
-
-    // Parallelizes code - must have -fopenmp compiler flag turned on.
+	/* Parallelize ray tracing code if compiling with OpenMP. GCC 4.2+ can
+	 * compile with OpenMP using the -fopenmp switch. Set the environment
+	 * variable OMP_NUM_THREADS to specify the number of threads to use.
+	 * (Try setting the number of threads to the number of processors/cores.)
+	 */
     #ifdef _OPENMP
-        #pragma omp parallel for
+		#pragma omp parallel for
     #endif
     for (int c = 0; c < win_width; c++) {
         for (int r = 0; r < win_height; r++) {
