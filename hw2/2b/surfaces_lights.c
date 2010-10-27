@@ -35,7 +35,6 @@ color_t RED = {1.0f, 0.0f, 0.0f};
 list356_t* get_surfaces() {
     debug("get_surfaces()") ;
 
-
     // Spheres along the negative x, y, and z axes.
     list356_t* surfaces = make_list() ;
     surface_t* z_sphere ;
@@ -65,7 +64,7 @@ list356_t* get_surfaces() {
     lst_add(surfaces, tri1) ;
     lst_add(surfaces, tri2) ;
     
-    // An infinite plane in the y=-1 plane.
+    // An infinite plane in the y=-2 plane.
     surface_t* plane = make_plane(
                     (point3_t){-40, -2, 2},
                     (point3_t){2, -2, 2},
