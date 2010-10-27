@@ -43,6 +43,8 @@
     #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 #endif
 
+// Ambient Light Intensity
+#define AMBIENT_LIGHT_ITEN 0.2f
 
 // Window dimensions.
 int win_width, win_height;
@@ -83,6 +85,8 @@ float rt_view_plane_height;
 vector3_t* rt_u;
 vector3_t* rt_v;
 vector3_t* rt_w;
+
+
 
 int main(int argc, char **argv) {
     debug("main(): get surfaces and lights") ;
@@ -177,7 +181,14 @@ void draw_image() {
                 float red_light_iten = 0.0f;
                 float green_light_iten = 0.0f;
                 float blue_light_iten = 0.0f;
+
+                // Begin with ambient lighting.
+                red_light_iten += (ambient_color->red * AMBIENT_LIGHT_ITEN);
+                green_light_iten += (ambient_color->green * AMBIENT_LIGHT_ITEN);
+                blue_light_iten += (ambient_color->blue * AMBIENT_LIGHT_ITEN);
+
                 // Iterate through lights
+                // Calculate as in 4.5.4 in text.
                 list356_itr_t *lights_itr = lst_iterator(lights);
                 while (lst_has_next(lights_itr)) {
                     light_t* cur_light = lst_next(lights_itr);
@@ -227,9 +238,8 @@ void draw_image() {
                             bp_max_term);
                     blue_light_iten += (specular_color->blue * light_iten->blue *
                             bp_max_term);
-                    }
-                
-                // Calculate as in 4.5.4.
+
+                }
                 
                 // red
                 *fb_offset(c, r, 0) = red_light_iten;
