@@ -35,8 +35,8 @@
 
 #include "debug.h"
 
-#define DEFAULT_WIN_WIDTH 1280
-#define DEFAULT_WIN_HEIGHT 720
+#define DEFAULT_WIN_WIDTH 800
+#define DEFAULT_WIN_HEIGHT 600
 
 #define MALLOC1(t) (t *)(malloc(sizeof(t)))
 #ifndef max

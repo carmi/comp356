@@ -16,16 +16,6 @@
 
 #define MALLOC1(t) (t *)(malloc(sizeof(t)))
 
-/** The type of a triangle.  A triangle is specified by three points,
- *  which are the vertices of the triangle.  The surface normal
- *  points in the direction of (b-a) x (c-a).
- */
-typedef struct _triangle_data_t {
-    /** The three vertices of the triangle.
-     */
-    point3_t a, b, c ;
-} triangle_data_t ;
-
 /**
  * The type of a sphere. A sphere is specified by a center point (given by x-, y-, z-coordinates) and a radius.
  */
@@ -38,6 +28,21 @@ typedef struct _sphere_data_t {
     float radius;
 } sphere_data_t;
 
+/** The type of a triangle.  A triangle is specified by three points,
+ *  which are the vertices of the triangle.  The surface normal
+ *  points in the direction of (b-a) x (c-a).
+ */
+typedef struct _triangle_data_t {
+    /** The three vertices of the triangle.
+     */
+    point3_t a, b, c ;
+} triangle_data_t ;
+
+typedef struct _plane_data_t {
+    /** The three vertices of the plane.
+     */
+    point3_t a, b, c;
+} plane_data_t;
 
 /** A convenience function for setting the surface_t parameters.
  *  
@@ -83,29 +88,27 @@ static bool sfc_hit_tri(void* data, ray3_t* ray, float t0,
  */
 static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
         float t1, hit_record_t* hit) ;
+
+/** Plane-ray intersection function.
+ *  
+ *  @param data a <code>plane_data_t</code> specifying the triangle.
+ *  @param ray the ray for which to calculate intersection.
+ *  @param t0 the minimum distance along the ray for the intersection.
+ *  @param t1 the maximum distance along the ray for the intersection.
+ *  @param hit the hit record to fill with data about the intersection.
+ *      All attributes except the surface reference itself will be
+ *      set if there is an intersection.
+ *  @return <code>true</code> if <code>ray</code> intersects the
+ *      plane in the interval [t0, t1], <code>false</code> otherwise.
+ */
+static bool sfc_hit_plane(void* data, ray3_t* ray, float t0,
+        float t1, hit_record_t* hit);
         
 // SURFACE CREATION FUNCTIONS
-
-surface_t* make_triangle(point3_t a, point3_t b, point3_t c,
-        color_t* diffuse_color, color_t* ambient_color, color_t* spec_color,
-        float phong_exp) {
-    triangle_data_t* data = MALLOC1(triangle_data_t) ;
-    data->a = a ;
-    data->b = b ;
-    data->c = c ;
-
-    surface_t* surface = MALLOC1(surface_t) ;
-    set_sfc_data(surface, data, sfc_hit_tri,
-            diffuse_color, ambient_color, spec_color, phong_exp) ;
-
-    return surface ;
-}
 
 surface_t* make_sphere(float x, float y, float z, float radius,
         color_t* diffuse_color, color_t* ambient_color, color_t* spec_color,
         float phong_exp) {
-    debug("make_sphere()");
-
     sphere_data_t* data = MALLOC1(sphere_data_t);
     data->x = x;
     data->y = y;
@@ -117,6 +120,32 @@ surface_t* make_sphere(float x, float y, float z, float radius,
             diffuse_color, ambient_color, spec_color, phong_exp);
 
     return surface;
+}
+
+surface_t* make_triangle(point3_t a, point3_t b, point3_t c, color_t* diff,
+        color_t* amb, color_t* spec, float phong_exp) {
+    triangle_data_t* data = MALLOC1(triangle_data_t) ;
+    data->a = a ;
+    data->b = b ;
+    data->c = c ;
+
+    surface_t* surface = MALLOC1(surface_t) ;
+    set_sfc_data(surface, data, sfc_hit_tri, diff, amb, spec, phong_exp) ;
+
+    return surface ;
+}
+
+surface_t* make_plane(point3_t a, point3_t b, point3_t c, color_t* diff,
+        color_t* amb, color_t* spec, float phong_exp) {
+    plane_data_t* data = MALLOC1(plane_data_t);
+    data->a = a;
+    data->b = b;
+    data->c = c;
+    
+    surface_t* surface = MALLOC1(surface_t);
+    set_sfc_data(surface, data, sfc_hit_plane, diff, amb, spec, phong_exp);
+    
+    return surface;        
 }
 
 static void set_sfc_data(surface_t* surface, void* data,
@@ -190,7 +219,6 @@ static bool sfc_hit_tri(void* data,
 
 static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
         float t1, hit_record_t* hit) {
-
     sphere_data_t* sdata = data;
 
     // Use the notation of Shirley & Marschner, Section 4.4.1.
@@ -222,7 +250,6 @@ static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
 
     float discrim = d_dot_ec2 - d_dot_d * (dot(&e_minus_c, &e_minus_c) - R2);
 
-
     // If discrim is positve (or zero), there are solutions
     if (discrim >= 0) {
         vector3_t _neg_d = (vector3_t){-(d->x), -(d->y), -(d->z)};
@@ -233,7 +260,9 @@ static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
         float sqrt_discrim = (float)sqrt((double)discrim); 
 
         float t = (term1 + sqrt_discrim ) / denom;
-
+        
+        if (t <= t0 || t > t1) return false;
+        
         // If discrim is zero, the ray grazes the sphere, touching it at
         // exactly one point.  Calculate second solution if discrim is not 0.
         if (!(discrim == 0)) {
@@ -260,6 +289,46 @@ static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
     else return false;
 }
 
+static bool sfc_hit_plane(void* data, ray3_t* ray, float t0, float t1,
+        hit_record_t* hit) {
+    // Use notation the notation of Shirley & Marschner, Section 4.4.3.
+    plane_data_t* pdata = data;
+    point3_t* A = &pdata->a;
+    point3_t* B = &pdata->b;
+    point3_t* C = &pdata->c;
+    
+    // get normal.
+    vector3_t b_minus_a, c_minus_a, n;
+    pv_subtract(B, A, &b_minus_a);
+    pv_subtract(C, A, &c_minus_a);
+    cross(&b_minus_a, &c_minus_a, &n);
+    normalize(&n);
+    
+    // solve for t. We can use any of the three points as our p1.
+    vector3_t p1_minus_e;
+    pv_subtract(A, &ray->base, &p1_minus_e);
+    float numerator = dot(&p1_minus_e, &n);
+    float denominator = dot(&ray->dir, &n);
+    
+    // if denominator is 0 then ray is parallel to plane and thus there's
+    // no intersection.
+    if (denominator == 0) return false;
+    
+    float t = numerator / denominator;
+    
+    if (t <= t0 || t > t1) return false;
+    
+    hit->t = t;
+    
+    // The intersection point is e + td. Fill in the hit record with it.
+    vector3_t td;
+    multiply(&ray->dir, t, &td);
+    pv_add(&ray->base, &td, &(hit->hit_pt));
+    
+    hit->normal = n;
+    
+    return true;
+}
 
 bool sfc_hit(surface_t* sfc, ray3_t* ray, float t0, float t1,
         hit_record_t* hit) {
