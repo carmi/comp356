@@ -60,7 +60,7 @@ void get_dir_vec(int i, int j, vector3_t* result);
 float* fb_offset(int x, int y, int c);
 void add_two_colors(color_t* a, color_t* b, color_t* sum);
 void mult_two_colors(color_t* a, color_t* b, color_t* product);
-void raycolor(ray3_t* current_ray, int c, int r);
+void ray_color(ray3_t* current_ray, int c, int r);
 
 // Window identifiers.
 int main_win;    // Main top-level window.
@@ -146,7 +146,7 @@ void draw_image() {
             current_ray->dir = ray_dir;
             
             // Where the magic happens.
-            raycolor(current_ray, c, r);
+            ray_color(current_ray, c, r);
             
             free(current_ray);
         }
@@ -255,7 +255,7 @@ void mult_two_colors(color_t* a, color_t* b, color_t* product) {
     product->blue = a->blue * b->blue;
 }
 
-void raycolor(ray3_t* current_ray, int c, int r) {
+void ray_color(ray3_t* current_ray, int c, int r) {
     float t0 = 1;
     float t1 = FLT_MAX;
     hit_record_t rec;
