@@ -38,9 +38,11 @@ list356_t* get_surfaces() {
     // Spheres along the negative x, y, and z axes.
     list356_t* surfaces = make_list() ;
     surface_t* z_sphere ;
+    surface_t* green_sphere;
     for (float x=0.0; x>=-40.0; x-=3.0) {
-        lst_add(surfaces, make_sphere(x, 0.0, 0.0f, 1.0f, &GREEN, 
-                    &GREEN, &WHITE, 100.0f)) ;
+        lst_add(surfaces, (green_sphere = make_sphere(x, 0.0, 0.0f, 1.0f, &GREEN, 
+                    &GREEN, &WHITE, 100.0f))) ;
+        // green_sphere->refl_color = &LIGHT_GREY;
         lst_add(surfaces, make_sphere(0.0f, x, 0.0f, .25, &PURPLE, 
                     &PURPLE, &WHITE, 100.0f)) ;
         lst_add(surfaces, (z_sphere = make_sphere(0.0f, 0.0f, x, .25, &PURPLE, 
@@ -70,7 +72,7 @@ list356_t* get_surfaces() {
                     (point3_t){2, -2, 2},
                     (point3_t){2, -2, -20},
                     &RED, &RED, &BLACK, 10.0f);
-    plane->refl_color = &RED;
+    plane->refl_color = &DARK_GREY;
     lst_add(surfaces, plane);
     
     return surfaces ;

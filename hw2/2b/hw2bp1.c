@@ -43,10 +43,15 @@
     #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 #endif
 
-// Ambient Light Intensity
-#define AMBIENT_LIGHT_ITEN 0.2f
-// Epsilon for shadows (page 86 of text)
+// Ambient Light
+#define AMBIENT_LIGHT {0.1f, 0.1f, 0.1f};
+// Epsilon for ray tracing t0
 #define EPSILON 0.001f
+// Effects
+#define USE_BLINN_PHONG true
+#define USE_AMBIENT_LIGHTING true
+#define USE_SHADOWS true
+#define USE_REFLECTIONS true
 
 // Window dimensions.
 int win_width, win_height;
@@ -60,8 +65,9 @@ void handle_reshape(int w, int h);
 void set_camera_frame(point3_t* e, point3_t* P, vector3_t* up);
 void get_dir_vec(int i, int j, vector3_t* result);
 float* fb_offset(int x, int y, int c);
-void add_two_colors(color_t* a, color_t* b, color_t* sum);
+void add_to_color(color_t* a, color_t* b);
 void mult_two_colors(color_t* a, color_t* b, color_t* product);
+void mult_color_coefficient(color_t* a, float b, color_t* result);
 color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth);
 
 // Window identifiers.
@@ -88,8 +94,6 @@ float rt_view_plane_height;
 vector3_t* rt_u;
 vector3_t* rt_v;
 vector3_t* rt_w;
-
-
 
 int main(int argc, char **argv) {
     debug("main(): get surfaces and lights") ;
@@ -138,6 +142,11 @@ int main(int argc, char **argv) {
  * Display callback that iterates through framebuffer and ray traces.
  */
 void draw_image() {
+
+    // Parallelizes code - must have -fopenmp compiler flag turned on.
+    #ifdef _OPENMP
+        #pragma omp parallel for
+    #endif
     for (int c = 0; c < win_width; c++) {
         for (int r = 0; r < win_height; r++) {
             // Create ray.
@@ -146,23 +155,25 @@ void draw_image() {
             vector3_t ray_dir;
             get_dir_vec(c, r, &ray_dir);
             current_ray->dir = ray_dir;
-            
+
             // Where the magic happens.
-            float t0 = 0.0f;
+            float t0 = EPSILON;
             float t1 = FLT_MAX;
-            color_t *pixel_color = ray_color(current_ray, t0, t1, 0);
             
+            color_t *pixel_color = ray_color(current_ray, t0, t1, 0);
+
             // red
             *fb_offset(c, r, 0) = pixel_color->red;
             // green
             *fb_offset(c, r, 1) = pixel_color->green;
             // blue
             *fb_offset(c, r, 2) = pixel_color->blue;
-            
+
             free(pixel_color);
             free(current_ray);
         }
     }
+    
     debug("Done iterating through pixels.");
     glWindowPos2s(0, 0);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -253,11 +264,11 @@ float* fb_offset(int x, int y, int c) {
     return &fb[(y * win_width + x) * 3 + (c)];
 }
 
-// Adds color a and color b into color sum.
-void add_two_colors(color_t* a, color_t* b, color_t* sum) {
-    sum->red = a->red + b->red;
-    sum->green = a->green + b->green;
-    sum->blue = a->blue + b->blue;
+// Adds color b to color a.
+void add_to_color(color_t* a, color_t* b) {
+    a->red = a->red + b->red;
+    a->green = a->green + b->green;
+    a->blue = a->blue + b->blue;
 }
 
 // Multiplies color a and color b into color product.
@@ -267,8 +278,18 @@ void mult_two_colors(color_t* a, color_t* b, color_t* product) {
     product->blue = a->blue * b->blue;
 }
 
+// Multiplies a color by a float and puts into result.
+void mult_color_coefficient(color_t* a, float b, color_t* result) {
+    result->red = a->red * b;
+    result->green = a->green * b;
+    result->blue = a->blue * b;
+}
+
 color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
     color_t *pixel_color = MALLOC1(color_t);
+    pixel_color->red = 0.0f;
+    pixel_color->green = 0.0f;
+    pixel_color->blue = 0.0f;
     hit_record_t rec;
     hit_record_t srec;
     list356_itr_t *surfaces_itr = lst_iterator(surfaces);
@@ -294,19 +315,14 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
         color_t *specular_color = closest_surface->spec_color;
         color_t *reflection_color = closest_surface->refl_color;
         float phong_exp = closest_surface->phong_exp;
-
-        // float t = srec.t;
         
         point3_t intersection_point = srec.hit_pt;
 
-        float red_light_iten = 0.0f;
-        float green_light_iten = 0.0f;
-        float blue_light_iten = 0.0f;
-
         // Begin with ambient lighting.
-        red_light_iten += (ambient_color->red * AMBIENT_LIGHT_ITEN);
-        green_light_iten += (ambient_color->green * AMBIENT_LIGHT_ITEN);
-        blue_light_iten += (ambient_color->blue * AMBIENT_LIGHT_ITEN);
+        if (USE_AMBIENT_LIGHTING) {
+            color_t ambient_lighting = AMBIENT_LIGHT;
+            mult_two_colors(ambient_color, &ambient_lighting, pixel_color);
+        }
 
         // Iterate through lights
         // Calculate as in 4.5.4 in text.
@@ -349,49 +365,43 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
                     }
                 }
             } 
-            
             lst_iterator_free(shadow_surfaces_itr);
-            if (!shadow_hit_something) {
+            
+            color_t temp1, temp2;
+            if (!shadow_hit_something || !USE_SHADOWS) {
                 // Lambertian Diffuse Shading
                 // Calculate diffuse_max_term once and re-use result.
                 float diffuse_max_term = max(0, dot(&light_dir,
                     &srec.normal));
 
-                // Calculate light intensities for each of RGB
-                red_light_iten += (diffuse_color->red * light_iten->red *
-                         diffuse_max_term);
-                green_light_iten += (diffuse_color->green *
-                    light_iten->green * diffuse_max_term);
-                blue_light_iten += (diffuse_color->blue * light_iten->blue *
-                        diffuse_max_term);
+                mult_two_colors(diffuse_color, light_iten, &temp1);
+                mult_color_coefficient(&temp1, diffuse_max_term, &temp2);
+                add_to_color(pixel_color, &temp2);
 
                 // Blinn-Phong Shading
+                if (USE_BLINN_PHONG) {
+                    // Notation in Shirley and Marschner on pg. 83 is:
+                    // h = half_vector = normalize(v + l)
+                    // l = light_dir; v = view direction = normalize(-d)
+                    vector3_t view_dir;
+                    multiply(&current_ray->dir, -1.0f, &view_dir);
+                    normalize(&view_dir);
 
-                // Notation in Shirley and Marschner on pg. 83 is:
-                // h = half_vector = normalize(v + l)
-                // l = light_dir; v = view direction = normalize(-d)
-                vector3_t view_dir;
-                multiply(&current_ray->dir, -1.0f, &view_dir);
-                normalize(&view_dir);
-
-                vector3_t half_vec;
-                add(&view_dir, &light_dir, &half_vec);
-                normalize(&half_vec);
+                    vector3_t half_vec;
+                    add(&view_dir, &light_dir, &half_vec);
+                    normalize(&half_vec);
             
-                float bp_dot = dot(&srec.normal , &half_vec);
-                float bp_max_term = (double) pow( max(0,bp_dot),
-                    (double) phong_exp);
+                    float bp_dot = dot(&srec.normal , &half_vec);
+                    float bp_max_term = (double) pow( max(0,bp_dot),
+                        (double) phong_exp);
 
-                // Calculate additional light intensities for each of RGB
-                red_light_iten += (specular_color->red * light_iten->red *
-                         bp_max_term);
-                green_light_iten += (specular_color->green *
-                    light_iten->green * bp_max_term);
-                blue_light_iten += (specular_color->blue * light_iten->blue *
-                        bp_max_term);
+                    mult_two_colors(specular_color, light_iten, &temp1);
+                    mult_color_coefficient(&temp1, bp_max_term, &temp2);
+                    add_to_color(pixel_color, &temp2);
+                }
             }
             // Calculate reflections
-            if (reflection_color != NULL) {
+            if (reflection_color != NULL && depth < 5 && USE_REFLECTIONS) {
                 // Notation from Shirley-Marschner 4.8.
                 ray3_t reflection_ray;
                 vector3_t twodnn, r;
@@ -405,20 +415,11 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
                 
                 color_t *reflection_ray_color = ray_color(&reflection_ray,
                     EPSILON, FLT_MAX, depth + 1);
-                red_light_iten += reflection_color->red * reflection_ray_color->red;
-                green_light_iten += reflection_color->green * reflection_ray_color->green;
-                blue_light_iten += reflection_color->blue * reflection_ray_color->blue;
+                mult_two_colors(reflection_color, reflection_ray_color, &temp1);
+                add_to_color(pixel_color, &temp1);
                 free(reflection_ray_color);
             }
         }
-        pixel_color->red = red_light_iten;
-        pixel_color->green = green_light_iten;
-        pixel_color->blue = blue_light_iten;
-    }
-    else {
-        pixel_color->red = 0.0f;
-        pixel_color->green = 0.0f;
-        pixel_color->blue = 0.0f;
     }
     return pixel_color;
 }
