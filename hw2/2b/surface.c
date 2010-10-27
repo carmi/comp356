@@ -273,7 +273,7 @@ static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
             }
         }
         hit->t = t;
-        //fill in hit_pt and hit_normal vector
+        // fill in hit_pt and hit_normal vector
         // intersection point is e + td
         vector3_t td;
         multiply(d, t, &td);

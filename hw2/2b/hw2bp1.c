@@ -45,8 +45,8 @@
 
 // Ambient Light
 #define AMBIENT_LIGHT {0.1f, 0.1f, 0.1f};
-// Epsilon for ray tracing t0
-#define EPSILON 0.001f
+// Epsilon value for shadows and reflections.
+#define EPSILON 0.1
 // Shading effects
 #define USE_LAMBERT true
 #define USE_BLINN_PHONG true
@@ -166,8 +166,7 @@ void draw_image() {
             get_dir_vec(c, r, &ray_dir);
             current_ray->dir = ray_dir;
             
-            color_t *pixel_color = ray_color(current_ray, EPSILON, FLT_MAX,
-				0);
+            color_t *pixel_color = ray_color(current_ray, 0, FLT_MAX, 0);
 
             // Set framebuffer pixels.
 			*fb_offset(c, r, 0) = pixel_color->red;
@@ -269,33 +268,71 @@ void get_dir_vec(int i, int j, vector3_t* result) {
     add(&tmp_x, &tmp_z, result);
 }
 
-// Returns the pointer into the framebuffer that corresponds
-// to pixel position (x, y) and color c.
+/**
+ * Get a pointer to the framebuffer that corresponds to pixel position (x, y)
+ * and color c. Since we're specifying our color intensities as floats, this
+ * pointer points to a float (which we can also explicitly set).
+ *
+ * @param x - the column of the pixel.
+ * @param y - the row of the pixel.
+ * @param c - which color of the pixel to access. 0 - red, 1 - green, 2 - blue.
+ */
 float* fb_offset(int x, int y, int c) {
     return &fb[(y * win_width + x) * 3 + (c)];
 }
 
-// Adds color b to color a.
+/**
+ * Add one color into another.
+ *
+ * @param a - the color to be added into.
+ * @param b - the color to add.
+ */
 void add_to_color(color_t* a, color_t* b) {
     a->red = a->red + b->red;
     a->green = a->green + b->green;
     a->blue = a->blue + b->blue;
 }
 
-// Multiplies color a and color b into color product.
+/**
+ * Multiply two colors together.
+ *
+ * @param a - a color to be multiplied.
+ * @param b - a color to be multiplied.
+ * @param product - the result of the multiplication.
+ */
 void mult_two_colors(color_t* a, color_t* b, color_t* product) {
     product->red = a->red * b->red;
     product->green = a->green * b->green;
     product->blue = a->blue * b->blue;
 }
 
-// Multiplies a color by a float and puts into result.
-void mult_color_coefficient(color_t* a, float b, color_t* result) {
-    result->red = a->red * b;
-    result->green = a->green * b;
-    result->blue = a->blue * b;
+/**
+ * Multiply a color by a coefficient.
+ *
+ * @param a - the color to be multiplied.
+ * @param b - the floating point coefficient to be multiplied.
+ * @param product - the result of the multiplication.
+ */
+void mult_color_coefficient(color_t* a, float b, color_t* product) {
+    product->red = a->red * b;
+    product->green = a->green * b;
+    product->blue = a->blue * b;
 }
 
+/**
+ * Run the ray tracing algorithm on a particular ray. We find the closest
+ * surface that the ray hits and return the color of the intersection point,
+ * applying any number of shading models.
+ *
+ * @param current_ray - the ray to trace.
+ * @param t0 - the lower bound of the time interval of the algorithm. Used 
+ * 			   by the surface hit functions to detect whether a surface
+ * 			   has been hit.
+ * @param t1 - the upper bound of the time interval of the algorithm. Used 
+ * 			   by the surface hit functions to detect whether a surface
+ * 			   has been hit.
+ * @param depth - the recursion depth of the ray tracer (used for reflections).
+ */
 color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
     color_t *pixel_color = MALLOC1(color_t);
     pixel_color->red = 0.0f;
@@ -421,7 +458,7 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
                 reflection_ray.dir = r;
                 
                 color_t *reflection_ray_color = ray_color(&reflection_ray,
-                    EPSILON, FLT_MAX, depth + 1);
+					EPSILON, FLT_MAX, depth + 1);
                 mult_two_colors(reflection_color, reflection_ray_color, &temp1);
                 add_to_color(pixel_color, &temp1);
                 free(reflection_ray_color);
