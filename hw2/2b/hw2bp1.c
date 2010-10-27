@@ -177,14 +177,11 @@ void draw_image() {
             free(current_ray);
         }
     }
-    
     debug("Done iterating through pixels.");
     glWindowPos2s(0, 0);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glDrawPixels(win_width, win_height, GL_RGB, GL_FLOAT, fb);
-    
     glFlush();
-    
     glutSwapBuffers();
 }
 
@@ -239,7 +236,6 @@ void set_camera_frame(point3_t* e, point3_t* P, vector3_t* up) {
     // Calculate v
     cross(rt_w, rt_u, rt_v);
 }
-
 
 /**
  * Map a screen pixel (i, j) to a point (in the world frame) on our view
