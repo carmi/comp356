@@ -35,8 +35,8 @@
 
 #include "debug.h"
 
-#define DEFAULT_WIN_WIDTH 1280
-#define DEFAULT_WIN_HEIGHT 720
+#define DEFAULT_WIN_WIDTH 800
+#define DEFAULT_WIN_HEIGHT 600
 
 #define MALLOC1(t) (t *)(malloc(sizeof(t)))
 #ifndef max
@@ -134,11 +134,11 @@ void draw_image() {
     for (int c = 0; c < win_width; c++) {
         for (int r = 0; r < win_height; r++) {
             // Create ray.
-            ray3_t currentRay;
-            currentRay.base = *rt_eye;
+            ray3_t current_ray;
+            current_ray.base = *rt_eye;
             vector3_t rayDir;
             get_dir_vec(c, r, &rayDir);
-            currentRay.dir = rayDir;
+            current_ray.dir = rayDir;
             
             float t0 = 1;
             float t1 = FLT_MAX;
@@ -146,13 +146,13 @@ void draw_image() {
             hit_record_t rec;
             hit_record_t srec;
             
-            list356_itr_t *surfacesIterator = lst_iterator(surfaces);
-            bool hitSomething = false;
-            while (lst_has_next(surfacesIterator)) {
-                surface_t *currentSurface = lst_next(surfacesIterator);
-                if (sfc_hit(currentSurface, &currentRay, t0, t1, &rec)) {
+            list356_itr_t *surfaces_itr = lst_iterator(surfaces);
+            bool hit_something = false;
+            while (lst_has_next(surfaces_itr)) {
+                surface_t *current_surface = lst_next(surfaces_itr);
+                if (sfc_hit(current_surface, &current_ray, t0, t1, &rec)) {
                     if (rec.t < t1) {
-                        hitSomething = true;
+                        hit_something = true;
                         srec.sfc = rec.sfc;
                         srec.t = rec.t;
                         srec.hit_pt = rec.hit_pt;
@@ -162,17 +162,17 @@ void draw_image() {
                 }
             }
             
-            if (hitSomething) {
-                surface_t *closestSurface = srec.sfc;
-                color_t *diffuseColor = closestSurface->diffuse_color;
-                color_t *ambientColor = closestSurface->ambient_color;
-                color_t *specularColor = closestSurface->spec_color;
-                color_t *reflectionColor = closestSurface->refl_color;
-                float phongExponent = closestSurface->phong_exp;
-            
+            if (hit_something) {
+                surface_t *closest_surface = srec.sfc;
+                color_t *diffuse_color = closest_surface->diffuse_color;
+                color_t *ambient_color = closest_surface->ambient_color;
+                color_t *specular_color = closest_surface->spec_color;
+                color_t *reflection_color = closest_surface->refl_color;
+                float phong_exp = closest_surface->phong_exp;
+
                 float t = srec.t;
-            
-                point3_t intersectionPoint = srec.hit_pt;
+                
+                point3_t intersection_point = srec.hit_pt;
 
                 float red_light_iten = 0.0f;
                 float green_light_iten = 0.0f;
@@ -186,18 +186,18 @@ void draw_image() {
                     // Incidence angle is position of light minus intersection
                     // point
                     vector3_t incidence_angle;                  
-                    pv_subtract(light_position, &intersectionPoint, &incidence_angle);
+                    pv_subtract(light_position, &intersection_point, &incidence_angle);
                     normalize(&incidence_angle);
                     
                     color_t* light_color = cur_light->color;
                     
                     // Calculate light intensities for each of RGB
                     // red
-                    red_light_iten += (diffuseColor->red * light_color->red *
+                    red_light_iten += (diffuse_color->red * light_color->red *
                             max(0, dot(&incidence_angle, &srec.normal)) );
-                    green_light_iten += (diffuseColor->green * light_color->green *
+                    green_light_iten += (diffuse_color->green * light_color->green *
                             max(0, dot(&incidence_angle, &srec.normal)) );
-                    blue_light_iten += (diffuseColor->blue * light_color->blue *
+                    blue_light_iten += (diffuse_color->blue * light_color->blue *
                             max(0, dot(&incidence_angle, &srec.normal)) );
                     }
             
@@ -205,14 +205,14 @@ void draw_image() {
                 // Calculate as in 4.5.4.
                 
                 // red
-                *fb_offset(c, r, 0) = red_light_iten*diffuseColor->red;
+                *fb_offset(c, r, 0) = red_light_iten*diffuse_color->red;
                 // green
-                *fb_offset(c, r, 1) = green_light_iten*diffuseColor->green;
+                *fb_offset(c, r, 1) = green_light_iten*diffuse_color->green;
                 // blue
-                *fb_offset(c, r, 2) = blue_light_iten*diffuseColor->blue;
+                *fb_offset(c, r, 2) = blue_light_iten*diffuse_color->blue;
             }
             
-            lst_iterator_free(surfacesIterator);
+            lst_iterator_free(surfaces_itr);
         }
     }
     debug("Done iterating through pixels.");
