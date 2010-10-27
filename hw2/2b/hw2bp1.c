@@ -136,9 +136,9 @@ void draw_image() {
             // Create ray.
             ray3_t current_ray;
             current_ray.base = *rt_eye;
-            vector3_t rayDir;
-            get_dir_vec(c, r, &rayDir);
-            current_ray.dir = rayDir;
+            vector3_t ray_dir;
+            get_dir_vec(c, r, &ray_dir);
+            current_ray.dir = ray_dir;
             
             float t0 = 1;
             float t1 = FLT_MAX;
@@ -183,22 +183,50 @@ void draw_image() {
                     light_t* cur_light = lst_next(lights_itr);
                     point3_t* light_position = cur_light->position;
 
-                    // Incidence angle is position of light minus intersection
-                    // point
-                    vector3_t incidence_angle;                  
-                    pv_subtract(light_position, &intersection_point, &incidence_angle);
-                    normalize(&incidence_angle);
+                    // light_dir is vector from intersection point to the
+                    // position of light.
+                    vector3_t light_dir;                  
+                    pv_subtract(light_position, &intersection_point, &light_dir);
+                    normalize(&light_dir);
                     
-                    color_t* light_color = cur_light->color;
+                    // light_iten  = light itensity of the light, I in text.
+                    color_t* light_iten = cur_light->color;
                     
+                    // Lambertian Diffuse Shading
+                    // Calculate diffuse_max_term once and re-use result.
+                    float diffuse_max_term = max(0, dot(&light_dir, &srec.normal));
+
                     // Calculate light intensities for each of RGB
-                    // red
-                    red_light_iten += (diffuse_color->red * light_color->red *
-                            max(0, dot(&incidence_angle, &srec.normal)) );
-                    green_light_iten += (diffuse_color->green * light_color->green *
-                            max(0, dot(&incidence_angle, &srec.normal)) );
-                    blue_light_iten += (diffuse_color->blue * light_color->blue *
-                            max(0, dot(&incidence_angle, &srec.normal)) );
+                    red_light_iten += (specular_color->red * light_iten->red *
+                             diffuse_max_term);
+                    green_light_iten += (specular_color->green * light_iten->green *
+                            diffuse_max_term);
+                    blue_light_iten += (specular_color->blue * light_iten->blue *
+                            diffuse_max_term);
+
+                    // Blinn-Phong Shading
+
+                    // Notation in Shirley and Marschner on pg. 83 is:
+                    // h = half_vector = normalize(v + l)
+                    // l = light_dir; v = view direction = normalize(-d)
+                    vector3_t view_dir;
+                    multiply(&current_ray.dir, -1.0f, &view_dir);
+                    normalize(&view_dir);
+
+                    vector3_t half_vec;
+                    add(&view_dir, &light_dir, &half_vec);
+                    normalize(&half_vec);
+                    
+                    float bp_dot = dot(&srec.normal , &half_vec);
+                    float bp_max_term = (double) pow( max(0,bp_dot), (double) phong_exp);
+
+                    // Calculate additional light intensities for each of RGB
+                    red_light_iten += (diffuse_color->red * light_iten->red *
+                             bp_max_term);
+                    green_light_iten += (diffuse_color->green * light_iten->green *
+                            bp_max_term);
+                    blue_light_iten += (diffuse_color->blue * light_iten->blue *
+                            bp_max_term);
                     }
             
                 
