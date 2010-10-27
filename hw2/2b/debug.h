@@ -1,4 +1,12 @@
-#ifndef DEBUG_H
+/** @file debug.h
+ *  @brief - Debug header file
+ *  Professor Danner
+ *  Computer Graphics 356
+ *  Homework #2B
+ *  Evan Carmi (WesID: 807136) and Carlo Francisco (WesID: 774066)
+ *  ecarmi@wesleyan.edu and jfrancisco@wesleyan.edu
+ *
+ */#ifndef DEBUG_H
 #define DEBUG_H
 
 // A marginally-clever debugging function that expends to a no-op

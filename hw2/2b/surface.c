@@ -1,6 +1,12 @@
-/** Surface functions.
+/** Surface functions
+ *  @file surface.c
+ *  @brief - A ray tracing algorithm written in C.
+ *  Professor Danner
+ *  Computer Graphics 356
+ *  Homework #2B
+ *  Evan Carmi (WesID: 807136) and Carlo Francisco (WesID: 774066)
+ *  ecarmi@wesleyan.edu and jfrancisco@wesleyan.edu
  *
- *  @author N. Danner
  */
 
 #include <assert.h>

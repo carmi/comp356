@@ -1,5 +1,11 @@
 /** @file color.h Color type definitions and some constants for
  *  common colors.
+ *  Professor Danner
+ *  Computer Graphics 356
+ *  Homework #2B
+ *  Evan Carmi (WesID: 807136) and Carlo Francisco (WesID: 774066)
+ *  ecarmi@wesleyan.edu and jfrancisco@wesleyan.edu
+ *
  */
 
 #ifndef COLOR_H
