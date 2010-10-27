@@ -47,8 +47,10 @@
 #define AMBIENT_LIGHT {0.1f, 0.1f, 0.1f};
 // Epsilon for ray tracing t0
 #define EPSILON 0.001f
-// Effects
+// Shading effects
+#define USE_LAMBERT true
 #define USE_BLINN_PHONG true
+// Global effects
 #define USE_AMBIENT_LIGHTING true
 #define USE_SHADOWS true
 #define USE_REFLECTIONS true
@@ -65,6 +67,7 @@ void handle_reshape(int w, int h);
 void set_camera_frame(point3_t* e, point3_t* P, vector3_t* up);
 void get_dir_vec(int i, int j, vector3_t* result);
 float* fb_offset(int x, int y, int c);
+void set_pixel_color(int x, int y, color_t* color);
 void add_to_color(color_t* a, color_t* b);
 void mult_two_colors(color_t* a, color_t* b, color_t* product);
 void mult_color_coefficient(color_t* a, float b, color_t* result);
@@ -76,9 +79,11 @@ int main_win;    // Main top-level window.
 // Framebuffer identifier
 float* fb;
 
+bool fb_in_memory;
+
 // Surfaces and Lights identifiers
-list356_t* surfaces;
-list356_t* lights;
+list356_t* rt_surfaces;
+list356_t* rt_lights;
 
 // View Data identifiers
 point3_t* rt_eye;
@@ -98,8 +103,8 @@ vector3_t* rt_w;
 int main(int argc, char **argv) {
     debug("main(): get surfaces and lights") ;
     // Get surfaces and lights from surfaces_lights.c
-    surfaces = get_surfaces();
-    lights = get_lights();
+    rt_surfaces = get_surfaces();
+    rt_lights = get_lights();
     
     // Set view_data and view_plane
     rt_eye = MALLOC1(point3_t);
@@ -121,6 +126,8 @@ int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     
+	fb_in_memory = false;
+
     // Create the main window, set the display callback.
     debug("main(): create main window.") ;
     main_win = glutCreateWindow("A Ray Tracer");
@@ -134,7 +141,7 @@ int main(int argc, char **argv) {
     
     free(rt_w); free(rt_v); free(rt_u);
     free(rt_up_dir); free(rt_look_at_point); free(rt_eye);
-    lst_free(surfaces); lst_free(lights);
+    lst_free(rt_surfaces); lst_free(rt_lights);
     return EXIT_SUCCESS;
 }
 
@@ -158,18 +165,13 @@ void draw_image() {
             vector3_t ray_dir;
             get_dir_vec(c, r, &ray_dir);
             current_ray->dir = ray_dir;
-
-            // Where the magic happens.
-            float t0 = EPSILON;
-            float t1 = FLT_MAX;
             
-            color_t *pixel_color = ray_color(current_ray, t0, t1, 0);
+            color_t *pixel_color = ray_color(current_ray, EPSILON, FLT_MAX,
+				0);
 
-            // red
-            *fb_offset(c, r, 0) = pixel_color->red;
-            // green
+            // Set framebuffer pixels.
+			*fb_offset(c, r, 0) = pixel_color->red;
             *fb_offset(c, r, 1) = pixel_color->green;
-            // blue
             *fb_offset(c, r, 2) = pixel_color->blue;
 
             free(pixel_color);
@@ -204,9 +206,15 @@ void handle_reshape(int w, int h) {
     win_width = w;
     win_height = h;
 
-    // Create framebuffer - 3 dimensional array of float
-    fb = malloc(win_width * win_height * 3 * sizeof(float));
-    bzero(fb, (win_width*win_height*3)*sizeof(float));
+	if (fb_in_memory) {
+		free(fb);
+		fb_in_memory = false;
+	}
+
+    // (Re)create framebuffer - array of floats
+	fb = malloc(win_width * win_height * 3 * sizeof(float));
+	fb_in_memory = true;
+	//bzero(fb, (win_width*win_height*3)*sizeof(float));
 }
 
 /**
@@ -295,17 +303,14 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
     pixel_color->blue = 0.0f;
     hit_record_t rec;
     hit_record_t srec;
-    list356_itr_t *surfaces_itr = lst_iterator(surfaces);
+    list356_itr_t *surfaces_itr = lst_iterator(rt_surfaces);
     bool hit_something = false;
     while (lst_has_next(surfaces_itr)) {
         surface_t *current_surface = lst_next(surfaces_itr);
         if (sfc_hit(current_surface, current_ray, t0, t1, &rec)) {
             if (rec.t < t1) {
                 hit_something = true;
-                srec.sfc = rec.sfc;
-                srec.t = rec.t;
-                srec.hit_pt = rec.hit_pt;
-                srec.normal = rec.normal;
+				srec = rec;
                 t1 = rec.t;
             }
         }
@@ -329,7 +334,7 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
 
         // Iterate through lights
         // Calculate as in 4.5.4 in text.
-        list356_itr_t *lights_itr = lst_iterator(lights);
+        list356_itr_t *lights_itr = lst_iterator(rt_lights);
         while (lst_has_next(lights_itr)) {
             light_t* cur_light = lst_next(lights_itr);
             point3_t* light_position = cur_light->position;
@@ -340,8 +345,8 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
             pv_subtract(light_position, &intersection_point, &light_dir);
             normalize(&light_dir);
             
-            // light_iten  = light itensity of the light, I in text.
-            color_t* light_iten = cur_light->color;
+            // light_intensity  = light intensity of the light, I in text.
+            color_t* light_intensity = cur_light->color;
             
             // Using Shirley-Marschner notation, section 4.7.
             // construct a ray with base intersection_point, direction light_dir
@@ -351,7 +356,7 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
             hit_record_t shadow_srec;
             float shadow_t0 = EPSILON;
             float shadow_t1 = FLT_MAX;
-            list356_itr_t *shadow_surfaces_itr = lst_iterator(surfaces);
+            list356_itr_t *shadow_surfaces_itr = lst_iterator(rt_surfaces);
             bool shadow_hit_something = false;
             while (lst_has_next(shadow_surfaces_itr)) {
                 surface_t *shadow_current_surface =
@@ -360,10 +365,7 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
                         shadow_t1, &shadow_rec)) {
                     if (shadow_rec.t < shadow_t1) {
                         shadow_hit_something = true;
-                        shadow_srec.sfc = shadow_rec.sfc;
-                        shadow_srec.t = shadow_rec.t;
-                        shadow_srec.hit_pt = shadow_rec.hit_pt;
-                        shadow_srec.normal = shadow_rec.normal;
+						shadow_srec = shadow_rec;
                         shadow_t1 = shadow_rec.t;
                     }
                 }
@@ -374,12 +376,14 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
             if (!shadow_hit_something || !USE_SHADOWS) {
                 // Lambertian Diffuse Shading
                 // Calculate diffuse_max_term once and re-use result.
-                float diffuse_max_term = max(0, dot(&light_dir,
-                    &srec.normal));
+				if (USE_LAMBERT) {
+	                float diffuse_max_term = max(0, dot(&light_dir,
+	                    &srec.normal));
 
-                mult_two_colors(diffuse_color, light_iten, &temp1);
-                mult_color_coefficient(&temp1, diffuse_max_term, &temp2);
-                add_to_color(pixel_color, &temp2);
+	                mult_two_colors(diffuse_color, light_intensity, &temp1);
+	                mult_color_coefficient(&temp1, diffuse_max_term, &temp2);
+	                add_to_color(pixel_color, &temp2);
+				}
 
                 // Blinn-Phong Shading
                 if (USE_BLINN_PHONG) {
@@ -398,7 +402,7 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
                     float bp_max_term = (double) pow( max(0,bp_dot),
                         (double) phong_exp);
 
-                    mult_two_colors(specular_color, light_iten, &temp1);
+                    mult_two_colors(specular_color, light_intensity, &temp1);
                     mult_color_coefficient(&temp1, bp_max_term, &temp2);
                     add_to_color(pixel_color, &temp2);
                 }
@@ -423,6 +427,7 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
                 free(reflection_ray_color);
             }
         }
-    }
+		lst_iterator_free(lights_itr);
+	}
     return pixel_color;
 }
