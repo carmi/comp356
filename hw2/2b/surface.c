@@ -240,7 +240,25 @@ static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
     point3_t* e = &ray->base;
     vector3_t* d = &ray->dir;
 
-    // We check if the sphere falls between t0 and t1.
+    /*  Before we calculate the quadratic equation, we can easily test
+        whether the sphere is outside the ray interval (behind or in front of
+        it) without finding "t." If the sphere isn't within the interval,
+        there's no way the ray intersects it, so we don't have to calculate
+        the discriminant, etc.
+        
+        To do this, we get the points on the ray at times t0 and t1 (the start
+        and end points of our interval). Then using distances, we check if the
+        sphere is closer to the eye than t0 is, or further from the eye than
+        t1 is. If either condition is true we skip the rest of the
+        calculations.
+        
+        It turns out, however, that this test does not offer us a considerable
+        performance boost. Over a number of runs, we found that the algorithm
+        took an average 3.8 seconds with this check, and that it took only
+        an average of 2.45 seconds without the check. This suggests to us that
+        the operations in this check are more expensive than just using the 
+        discriminant check alone.
+    */
     // First we need to find the points e + t0*d and e + t1*d.
     // vector3_t t0_times_d, t1_times_d;
     // multiply(d, t0, &t0_times_d);

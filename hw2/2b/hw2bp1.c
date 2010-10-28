@@ -160,13 +160,14 @@ int main(int argc, char **argv) {
  * Display callback that iterates through framebuffer and ray traces.
  */
 void draw_image() {
+    //     debug("Start time: %d", start_time);
+    //     clock_t start_time = clock();
+    
     /* Parallelize ray tracing code if compiling with OpenMP. GCC 4.2+ can
      * compile with OpenMP using the -fopenmp switch. Set the environment
      * variable OMP_NUM_THREADS to specify the number of threads to use.
      * (Try setting the number of threads to the number of processors/cores.)
      */
-    // debug("Start time: %d", start_time);
-    // clock_t start_time = clock();
     #ifdef _OPENMP
         #pragma omp parallel for
     #endif
@@ -191,16 +192,16 @@ void draw_image() {
         }
     }
     // Speed measurement
-    // clock_t end_time = clock();
-    //     //debug("End time: %d", end_time);
+    //     clock_t end_time = clock();
+    //     debug("End time: %d", end_time);
     //     clock_t time_delta = (end_time - start_time);
     //     debug("Time delta: %d", time_delta);
     //     clock_sum += time_delta;
     //     clock_runs += 1;
     //     clock_t average = (clock_sum / clock_runs );
-    // debug("Finished drawing pixels.");
-    // debug("Drawing took: %d", time_delta);
-    // debug("Average took: %d", average);
+    //     debug("Finished drawing pixels.");
+    //     debug("Drawing took: %d", time_delta);
+    //     debug("Average took: %d", average);
     glWindowPos2s(0, 0);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glDrawPixels(win_width, win_height, GL_RGB, GL_FLOAT, fb);

@@ -67,13 +67,13 @@ list356_t* get_surfaces() {
     lst_add(surfaces, tri2) ;
     
     // An infinite plane in the y=-2 plane.
-    // surface_t* plane = make_plane(
-    //                 (point3_t){-40, -2, 2},
-    //                 (point3_t){2, -2, 2},
-    //                 (point3_t){2, -2, -20},
-    //                 &RED, &RED, &BLACK, 10.0f);
-    // plane->refl_color = &DARK_GREY;
-    // lst_add(surfaces, plane);
+    surface_t* plane = make_plane(
+                    (point3_t){-40, -2, 2},
+                    (point3_t){2, -2, 2},
+                    (point3_t){2, -2, -20},
+                    &RED, &RED, &BLACK, 10.0f);
+    plane->refl_color = &DARK_GREY;
+    lst_add(surfaces, plane);
     
     return surfaces ;
 
