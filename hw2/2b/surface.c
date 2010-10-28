@@ -240,6 +240,22 @@ static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
     point3_t* e = &ray->base;
     vector3_t* d = &ray->dir;
 
+    // We check if the sphere falls between t0 and t1.
+    // First we need to find the points e + t0*d and e + t1*d.
+    vector3_t t0_times_d, t1_times_d;
+    multiply(d, t0, &t0_times_d);
+    multiply(d, t1, &t1_times_d);
+    point3_t t0_point, t1_point;
+    pv_add(e, &t0_times_d, &t0_point);
+    pv_add(e, &t1_times_d, &t1_point);
+    float eye_to_circle_edge_dist = dist(e, c) + R;
+    
+    if ((eye_to_circle_edge_dist < dist(e, &t0_point)) ||
+            (eye_to_circle_edge_dist > dist(e, &t1_point))) {
+        //debug("Sphere was outside ray interval.");
+        return false;
+    }
+
     // We know c, d, e, and R, calculate t.
 
     // First calculate discriminant (term under square root)
