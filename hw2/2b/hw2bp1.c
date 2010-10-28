@@ -39,21 +39,25 @@
 #define DEFAULT_WIN_HEIGHT 600
 
 #define MALLOC1(t) (t *)(malloc(sizeof(t)))
+
 #ifndef max
     #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 #endif
 
-// Ambient Light
-#define AMBIENT_LIGHT {0.1f, 0.1f, 0.1f};
 // Epsilon value for shadows and reflections.
 #define EPSILON 0.1
+
 // Shading effects
 #define USE_LAMBERT true
 #define USE_BLINN_PHONG true
+
 // Global effects
 #define USE_AMBIENT_LIGHTING true
 #define USE_SHADOWS true
 #define USE_REFLECTIONS true
+
+// Ambient Light
+color_t ambient_light = {.1f, .1f, .1f};
 
 // Window dimensions.
 int win_width, win_height;
@@ -361,8 +365,7 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
 
         // Begin with ambient lighting.
         if (USE_AMBIENT_LIGHTING) {
-            color_t ambient_lighting = AMBIENT_LIGHT;
-            mult_two_colors(ambient_color, &ambient_lighting, pixel_color);
+            mult_two_colors(ambient_color, &ambient_light, pixel_color);
         }
 
         // Iterate through lights
