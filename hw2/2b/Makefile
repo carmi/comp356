@@ -8,7 +8,7 @@ include comp356.mk
 EXECUTABLES=hw2bp1
 
 SOLUTION_FILES=hw2bp1.c Makefile surface.c surface.h color.h debug.h \
-		   surfaces_lights.c surfaces_lights.h
+		   surfaces_lights.h
 
 HW2BP1_DEPENDENCIES=hw2bp1.o color.h debug.h surface.c surface.h \
 		   surfaces_lights.c surfaces_lights.h
