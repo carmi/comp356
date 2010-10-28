@@ -252,7 +252,6 @@ static bool sfc_hit_sphere(void* data, ray3_t* ray, float t0,
     
     if ((eye_to_circle_edge_dist < dist(e, &t0_point)) ||
             (eye_to_circle_edge_dist > dist(e, &t1_point))) {
-        //debug("Sphere was outside ray interval.");
         return false;
     }
 
