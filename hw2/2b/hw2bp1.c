@@ -87,8 +87,8 @@ float* fb;
 bool fb_in_memory;
 
 // Global variables for measuring running time.
-clock_t clock_sum = 0;
-int clock_runs = 0;
+// clock_t clock_sum = 0;
+// int clock_runs = 0;
 
 // Surfaces and Lights identifiers
 list356_t* rt_surfaces;
@@ -165,48 +165,47 @@ void draw_image() {
      * variable OMP_NUM_THREADS to specify the number of threads to use.
      * (Try setting the number of threads to the number of processors/cores.)
      */
-    while (true) {
+    // debug("Start time: %d", start_time);
+    // clock_t start_time = clock();
     #ifdef _OPENMP
         #pragma omp parallel for
     #endif
-        clock_t start_time = clock();
-        debug("Start time: %d", start_time);
-        for (int c = 0; c < win_width; c++) {
-            for (int r = 0; r < win_height; r++) {
-                // Create ray.
-                ray3_t *current_ray = MALLOC1(ray3_t);
-                current_ray->base = *rt_eye;
-                vector3_t ray_dir;
-                get_dir_vec(c, r, &ray_dir);
-                current_ray->dir = ray_dir;
-                
-                color_t *pixel_color = ray_color(current_ray, 0, FLT_MAX, 0);
+    for (int c = 0; c < win_width; c++) {
+        for (int r = 0; r < win_height; r++) {
+            // Create ray.
+            ray3_t *current_ray = MALLOC1(ray3_t);
+            current_ray->base = *rt_eye;
+            vector3_t ray_dir;
+            get_dir_vec(c, r, &ray_dir);
+            current_ray->dir = ray_dir;
+            
+            color_t *pixel_color = ray_color(current_ray, 0, FLT_MAX, 0);
 
-                // Set framebuffer pixels.
-                *fb_offset(c, r, 0) = pixel_color->red;
-                *fb_offset(c, r, 1) = pixel_color->green;
-                *fb_offset(c, r, 2) = pixel_color->blue;
+            // Set framebuffer pixels.
+            *fb_offset(c, r, 0) = pixel_color->red;
+            *fb_offset(c, r, 1) = pixel_color->green;
+            *fb_offset(c, r, 2) = pixel_color->blue;
 
-                free(pixel_color);
-                free(current_ray);
-            }
+            free(pixel_color);
+            free(current_ray);
         }
-        clock_t end_time = clock();
-        debug("End time: %d", end_time);
-        clock_t time_delta = (end_time - start_time);
-        debug("Time delta: %d", time_delta);
-        clock_sum += time_delta;
-        clock_runs += 1;
-        clock_t average = (clock_sum / clock_runs );
-        debug("Finished drawing pixels.");
-        debug("Drawing took: %d", time_delta);
-        debug("Average took: %d", average);
-        glWindowPos2s(0, 0);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glDrawPixels(win_width, win_height, GL_RGB, GL_FLOAT, fb);
-        glFlush();
-        glutSwapBuffers();
     }
+    // Speed measurement
+    // clock_t end_time = clock();
+    //     //debug("End time: %d", end_time);
+    //     clock_t time_delta = (end_time - start_time);
+    //     debug("Time delta: %d", time_delta);
+    //     clock_sum += time_delta;
+    //     clock_runs += 1;
+    //     clock_t average = (clock_sum / clock_runs );
+    // debug("Finished drawing pixels.");
+    // debug("Drawing took: %d", time_delta);
+    // debug("Average took: %d", average);
+    glWindowPos2s(0, 0);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glDrawPixels(win_width, win_height, GL_RGB, GL_FLOAT, fb);
+    glFlush();
+    glutSwapBuffers();
 }
 
 /** Display callback that just clears the window to the clear color.
