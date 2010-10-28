@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     
-	fb_in_memory = false;
+    fb_in_memory = false;
 
     // Create the main window, set the display callback.
     debug("main(): create main window.") ;
@@ -153,13 +153,13 @@ int main(int argc, char **argv) {
  * Display callback that iterates through framebuffer and ray traces.
  */
 void draw_image() {
-	/* Parallelize ray tracing code if compiling with OpenMP. GCC 4.2+ can
-	 * compile with OpenMP using the -fopenmp switch. Set the environment
-	 * variable OMP_NUM_THREADS to specify the number of threads to use.
-	 * (Try setting the number of threads to the number of processors/cores.)
-	 */
+    /* Parallelize ray tracing code if compiling with OpenMP. GCC 4.2+ can
+     * compile with OpenMP using the -fopenmp switch. Set the environment
+     * variable OMP_NUM_THREADS to specify the number of threads to use.
+     * (Try setting the number of threads to the number of processors/cores.)
+     */
     #ifdef _OPENMP
-		#pragma omp parallel for
+        #pragma omp parallel for
     #endif
     for (int c = 0; c < win_width; c++) {
         for (int r = 0; r < win_height; r++) {
@@ -173,7 +173,7 @@ void draw_image() {
             color_t *pixel_color = ray_color(current_ray, 0, FLT_MAX, 0);
 
             // Set framebuffer pixels.
-			*fb_offset(c, r, 0) = pixel_color->red;
+            *fb_offset(c, r, 0) = pixel_color->red;
             *fb_offset(c, r, 1) = pixel_color->green;
             *fb_offset(c, r, 2) = pixel_color->blue;
 
@@ -206,15 +206,15 @@ void handle_reshape(int w, int h) {
     win_width = w;
     win_height = h;
 
-	if (fb_in_memory) {
-		free(fb);
-		fb_in_memory = false;
-	}
+    if (fb_in_memory) {
+        free(fb);
+        fb_in_memory = false;
+    }
 
     // (Re)create framebuffer - array of floats
-	fb = malloc(win_width * win_height * 3 * sizeof(float));
-	fb_in_memory = true;
-	//bzero(fb, (win_width*win_height*3)*sizeof(float));
+    fb = malloc(win_width * win_height * 3 * sizeof(float));
+    fb_in_memory = true;
+    //bzero(fb, (win_width*win_height*3)*sizeof(float));
 }
 
 /**
@@ -326,11 +326,11 @@ void mult_color_coefficient(color_t* a, float b, color_t* product) {
  *
  * @param current_ray - the ray to trace.
  * @param t0 - the lower bound of the time interval of the algorithm. Used 
- * 			   by the surface hit functions to detect whether a surface
- * 			   has been hit.
+ *             by the surface hit functions to detect whether a surface
+ *             has been hit.
  * @param t1 - the upper bound of the time interval of the algorithm. Used 
- * 			   by the surface hit functions to detect whether a surface
- * 			   has been hit.
+ *             by the surface hit functions to detect whether a surface
+ *             has been hit.
  * @param depth - the recursion depth of the ray tracer (used for reflections).
  */
 color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
@@ -347,7 +347,7 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
         if (sfc_hit(current_surface, current_ray, t0, t1, &rec)) {
             if (rec.t < t1) {
                 hit_something = true;
-				srec = rec;
+                srec = rec;
                 t1 = rec.t;
             }
         }
@@ -401,7 +401,7 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
                         shadow_t1, &shadow_rec)) {
                     if (shadow_rec.t < shadow_t1) {
                         shadow_hit_something = true;
-						shadow_srec = shadow_rec;
+                        shadow_srec = shadow_rec;
                         shadow_t1 = shadow_rec.t;
                     }
                 }
@@ -412,14 +412,14 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
             if (!shadow_hit_something || !USE_SHADOWS) {
                 // Lambertian Diffuse Shading
                 // Calculate diffuse_max_term once and re-use result.
-				if (USE_LAMBERT) {
-	                float diffuse_max_term = max(0, dot(&light_dir,
-	                    &srec.normal));
+                if (USE_LAMBERT) {
+                    float diffuse_max_term = max(0, dot(&light_dir,
+                        &srec.normal));
 
-	                mult_two_colors(diffuse_color, light_intensity, &temp1);
-	                mult_color_coefficient(&temp1, diffuse_max_term, &temp2);
-	                add_to_color(pixel_color, &temp2);
-				}
+                    mult_two_colors(diffuse_color, light_intensity, &temp1);
+                    mult_color_coefficient(&temp1, diffuse_max_term, &temp2);
+                    add_to_color(pixel_color, &temp2);
+                }
 
                 // Blinn-Phong Shading
                 if (USE_BLINN_PHONG) {
@@ -457,13 +457,13 @@ color_t* ray_color(ray3_t* current_ray, float t0, float t1, int depth) {
                 reflection_ray.dir = r;
                 
                 color_t *reflection_ray_color = ray_color(&reflection_ray,
-					EPSILON, FLT_MAX, depth + 1);
+                    EPSILON, FLT_MAX, depth + 1);
                 mult_two_colors(reflection_color, reflection_ray_color, &temp1);
                 add_to_color(pixel_color, &temp1);
                 free(reflection_ray_color);
             }
         }
-		lst_iterator_free(lights_itr);
-	}
+        lst_iterator_free(lights_itr);
+    }
     return pixel_color;
 }
