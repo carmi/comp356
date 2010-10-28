@@ -23,7 +23,8 @@
 #define MALLOC1(t) (t *)(malloc(sizeof(t)))
 
 /**
- * The type of a sphere. A sphere is specified by a center point (given by x-, y-, z-coordinates) and a radius.
+ * The type of a sphere. A sphere is specified by a center point (given by x-,
+ * y-, z-coordinates) and a radius.
  */
 typedef struct _sphere_data_t {
     /** The center point given by x,y,z and radius of the sphere.

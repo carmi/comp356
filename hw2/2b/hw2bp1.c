@@ -272,8 +272,10 @@ void set_camera_frame(point3_t* e, point3_t* P, vector3_t* up) {
  */
 void get_dir_vec(int i, int j, vector3_t* result) {
     float x, y, z;
-    x = (-rt_view_plane_width/2) + ( (((float)i + 0.5)/win_width)*rt_view_plane_width);
-    y = (-rt_view_plane_height/2) + ( (((float)j + 0.5)/win_height)*rt_view_plane_height);
+    x = (-rt_view_plane_width/2) + ( (((float)i + 0.5)/win_width)*
+            rt_view_plane_width);
+    y = (-rt_view_plane_height/2) + ( (((float)j + 0.5)/win_height)*
+            rt_view_plane_height);
     z = -rt_view_plane_dist;
     
     // result is vector d in Shirley and Marschner notation.
