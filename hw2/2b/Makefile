@@ -17,7 +17,7 @@ hw2bp1 : $(HW2BP1_DEPENDENCIES)
 	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $^ $(LDFLAGS) -l356
 
 solution : $(SOLUTION_FILES)
-	tar cvf hw2b.tar.gz $(SOLUTION_FILES)
+	tar czvf hw2b.tar.gz $(SOLUTION_FILES)
 
 clean :
 	rm -rf $(EXECUTABLES)
