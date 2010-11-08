@@ -45,6 +45,9 @@ void draw_unzoom_background() ;
 void draw_zoom_fb() ;
 void handle_exit() ;
 
+void draw_pixel_antialiased(int fb_x, float y_start, float y_end, int dir);
+int int_part(float value) ;
+float frac_part(float value) ;
 // Menu entries.
 int create_menu() ;
 enum menu_t {MENU_CLEAR, MENU_ZOOM, MENU_ALIAS, MENU_EXIT} ;
@@ -74,6 +77,9 @@ bool do_line = false ;
 
 // Anti-aliasing parameters.
 bool do_antialias = false ;
+
+// Antialiased line drawing enumerations
+enum dir { UP, DOWN};
 
 int main(int argc, char **argv) {
 
@@ -245,16 +251,20 @@ void draw_line_aliased() {
 
     int y = y0 ;
     float d = yIncr*(x0+1.0f) + xIncr*(y0+.5f) + C ;
+    debug("d: %f", d);
     for (int x=x0; x<=x1; ++x) {
+        debug("x: %i", x);
         *(unzoom_fb+fb_offset(y, x, 0)) = 0.0f ;
         *(unzoom_fb+fb_offset(y, x, 1)) = 0.0f ;
         *(unzoom_fb+fb_offset(y, x, 2)) = 0.0f ;
 
         if (d < 0) {
+            debug("d1: %f", d);
             d += bigIncr ;
             y += 1 ;
         }
         else {
+            debug("d2: %f", d);
             d += yIncr ;
         }
     }
@@ -265,13 +275,134 @@ void draw_line_aliased() {
  *  antialiasing.
  */
 void draw_line_antialiased() {
-    
-    //
-    // INSERT YOUR CODE HERE
-    //
+
+    int x0 = line_coord[0][0], y0 = line_coord[0][1] ;
+    int x1 = line_coord[1][0], y1 = line_coord[1][1] ;
+
+    float xIncr = x1 - x0 ;
+    float yIncr = y0 - y1 ;
+    float bigIncr = xIncr + yIncr ;
+    float C = x0*y1 - x1*y0 ;
+
+    float y = (float) y0 ;
+    float d_top = yIncr*(x0+1.0f) + xIncr*(y0 + 0.5f) + C ;
+    float d_bot = yIncr*(x0+0.0f) + xIncr*(y0 - 0.5f) + C ;
+
+    // We'll draw two lines each .5 below and above our actual line.
+    float slope = (float) (y1 - y0) / (float) (x1 - x0);
+    // y = mx +b; b = y - mx; b = intercept.
+    float intercept = ((float) y0) - slope*((float)x0);
+    // Our first line is .5 above our ideal line, so intercept +.5
+    float intercept_top = intercept + .5f;
+    //And -.5 for the line below.
+    float intercept_bot = intercept - .5f;
+
+    for (int x=x0; x<=x1; ++x) {
+        // For each x coordinate of our line, using y=mx+b slope formula, find
+        // the y value of the line's intersection with the left pixel border
+        // (the y-value when we plug in the x from our for loop.
+        float y_top = slope*((float)x) + intercept_top;
+        float y_bot = slope*((float)x) + intercept_bot;
+        debug("y_top: %f", y_top);
+        debug("y_bot: %f", y_bot);
+
+        float y_top_end = slope*(float)(x + 1) + intercept_top;
+        float y_bot_end = slope*(float)(x + 1) + intercept_bot;
+
+        draw_pixel_antialiased(x, y_top, y_top_end, 0);
+        draw_pixel_antialiased(x, y_bot, y_bot_end, 1);
+
+        /*
+        // Calculate area of supersampled pixel.
+        float area_top = 0.0f;
+        float area_bot = 0.0f;
+        for (int x_ss = 0; x_ss < 5; ++x_ss) {
+
+            
+            if (d_bot < 0) {
+                // the line lies above the midpoint of the next increment.
+                y_col += 1;
+                area_bot += (5.0f*(y_bot - (int) y_bot))*0.04f; // add 1/25.
+                d_bot += bigIncr/5.0f ;
+                y_bot += 0.2f ;
+            }
+            else {
+                d_bot += yIncr/5.0f ;
+            }
+        }
+        debug("area_top: %f", area_top);
+        debug("area_bot: %f", area_bot);
+        debug("y_top: %f", y_top);
+
+        *(unzoom_fb+fb_offset(y_top, x, 0)) = 1.0f - area_top;
+        *(unzoom_fb+fb_offset(y_top, x, 1)) = 1.0f - area_top;
+        *(unzoom_fb+fb_offset(y_top, x, 2)) = 1.0f - area_top;
+
+        *(unzoom_fb+fb_offset(y_bot, x, 0)) = 1.0f - area_bot;
+        *(unzoom_fb+fb_offset(y_bot, x, 1)) = 1.0f - area_bot;
+        *(unzoom_fb+fb_offset(y_bot, x, 2)) = 1.0f - area_bot; 
+        */
+
+    }
 
 }
 
+/**
+ * Draw a pixel with a given degree of grayness depending on the area that is 
+ * @param y_start - y-value beginning coordinate in the subpixel grid system.
+ * @param y_end - y-value ending coordinate in the subpixel grid system.
+ *    // We break the pixel into a 5x5 grid and consider it as a separate
+ *    "frame". In this frame we find the area using Bressenham's alg.
+ * y_start is start of line in 5x5 grid frame.
+ */
+void draw_pixel_antialiased(int fb_x, float y_start, float y_end, int dir) {
+    debug("draw_pixel_antialiased()") ;
+    // Adapted draw_line_aliased() function
+
+    int fb_y = int_part(y_start);
+    debug("fb_y: %i", fb_y);
+    debug("frac(y_start): %f", frac_part(y_start));
+    int y = (int) (frac_part(y_start)*5.0f);
+    debug("y: %i", y);
+    // Bressenham's algorithm for line-drawing.
+
+    int x0 = 1, x1 = 5;
+    float y0 = y_start, y1 = y_end;
+
+    float xIncr = x1 - x0 ;
+    float yIncr = y0 - y1 ;
+    float bigIncr = xIncr + yIncr ;
+    float C = x0*y1 - x1*y0 ;
+
+    int y_fb = (int) y_start;
+    float d = yIncr*(x0+1.0f) + xIncr*(y0+.5f) + C ;
+    int area = 0;
+    //debug("d: %f", d);
+    for (int x=x0; x<=x1; ++x) {
+        // Calculate number of subpixels contained by line.
+
+        debug("area: %i", area);
+        if (d < 0) {
+            //debug("d1: %f", d);
+            d += bigIncr ;
+            y += 1 ;
+        }
+        else {
+            //debug("d2: %f", d);
+            d += yIncr ;
+        }
+        if (!dir == 1) {
+            area += y;
+        } else {
+            area += 5 - y;
+        }
+
+    }
+    float shading = 1 - (float) area / 25.0f;
+    *(unzoom_fb+fb_offset(fb_y, fb_x, 0)) = shading;
+    *(unzoom_fb+fb_offset(fb_y, fb_x, 1)) = shading;
+    *(unzoom_fb+fb_offset(fb_y, fb_x, 2)) = shading;
+}
 /** Draw the line.
  */
 void draw_line() {
@@ -374,3 +505,18 @@ void display_zoom() {
     draw_pixels(zoom_fb) ;
 }
 
+/**
+ * Get the fractional part of a float
+ * @param value - a float
+ */
+float frac_part(float value) {
+    return value - int_part(value);
+}
+
+/**
+ * Get the integer part of a float
+ * @param value - a float
+ */
+int int_part(float value) {
+    return (int) value;
+}
