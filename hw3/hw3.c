@@ -284,11 +284,8 @@ void draw_line_antialiased() {
     // We'll draw two lines each .5 below and above our actual line.
     float slope = (float) (y1 - y0) / (float) (x1 - x0);
     // y = mx +b; b = y - mx; where b = intercept.
-    float intercept = ((float) y0) - slope*((float)x0);
     // Our first line is .5 above our ideal line, so intercept +.5
-    float intercept_top = intercept + 0.5f;
-    //And -.5 for the line below.
-    float intercept_bot = intercept - 0.5f;
+    float intercept_top = ((float) y0) - slope*((float)x0) + 1.0f;
 
     for (int x=x0; x<=x1; ++x) {
         // For each x coordinate of our line, using y=mx+b slope formula, find
@@ -296,11 +293,12 @@ void draw_line_antialiased() {
         // (the y-value when we plug in the x from our for loop.
         float y_top = slope*((float)x) + intercept_top;
         debug("y_top: %f", y_top);
-        float y_bot = slope*((float)x) + intercept_bot;
+        float y_bot = y_top - 1.0f;
         debug("y_bot: %f", y_bot);
 
-        float y_top_end = slope*(float)(x + 1) + intercept_top;
-        float y_bot_end = slope*(float)(x + 1) + intercept_bot;
+        // The y value at the end of end of the pixel is y + slope.
+        float y_top_end = y_top + slope;
+        float y_bot_end = y_top_end - 1.0f;
 
         draw_pixel_antialiased(x, y_top, y_top_end, DOWN);
         draw_pixel_antialiased(x, y_bot, y_bot_end, UP);
