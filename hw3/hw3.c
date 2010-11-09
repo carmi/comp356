@@ -1,6 +1,11 @@
-/** Antialiased midpoint algorithm demonstration.
- *
- *  @author N. Danner
+/**
+ *  @file hw3.c
+ *  @brief - Antialiased midpoint algorithm demonstration.
+ *  Professor Danner
+ *  Computer Graphics 356
+ *  Homework #3
+ *  Evan Carmi (WesID: 807136)
+ *  ecarmi@wesleyan.edu
  */
 
 #include <assert.h>
@@ -24,9 +29,6 @@
 
 #include "debug.h"
 
-// Antialiased line drawing enumerations
-typedef enum {UP, DOWN} dir_t;
-
 // Window data.
 const int DEFAULT_WIN_WIDTH = 800;
 const int DEFAULT_WIN_HEIGHT = 600;
@@ -48,9 +50,8 @@ void draw_unzoom_background();
 void draw_zoom_fb();
 void handle_exit();
 
-void draw_pixel_antialiased(int fb_x, float y0, float y1, dir_t dir);
-int int_part(float value);
-float frac_part(float value);
+// Utility function declarations.
+void draw_pixel(int x, int y, int area);
 
 // Menu entries.
 int create_menu();
@@ -239,8 +240,8 @@ int fb_offset(int y, int x, int c) {
 /** Draw the line segment using the standard incremental Bressenham algorithm.
  */
 void draw_line_aliased() {
-
     debug("draw_line_aliased()");
+
     // Bressenham's algorithm for line-drawing.
 
     int x0 = line_coord[0][0], y0 = line_coord[0][1];
@@ -292,123 +293,105 @@ void draw_line_antialiased() {
     float C = x0*y1 - x1*y0;
 
     int y = (int) y0;
-    float d = yIncr*(x0+0.6f) + xIncr*(y0+0.5f) + C;
+    // Calculate d at the midpoint of the first subpixel we'll look at, this
+    // midpoint's x-value is at x0, because we want to start at the subpixel
+    // (0, 2). And the midpoint's y-value is y0+.1, because we want to start
+    // at the middle of this subpixel (0, 2).
+    float d = yIncr*(x0) + xIncr*(y0+0.1f) + C;
     debug("d: %f", d);
+
+    // Create a counter, y_counter, to keep track of our position in subpixels
+    // y-grid.
     int y_counter = 0;
+
     for (int x=x0; x<=x1; ++x) {
-        //debug("Next iteration of x: x = %i", x);
-        // We are in a pixel, iterate through it's 5x5 grid
+        // For each x-value, we go into it's 5x5 subpixel grid and calculate
+        // areas of subpixels above and below our line.
         int subpixels_below = 0;
         int subpixels_above = 0;
-        for (int sub_x = 0; sub_x < 5; ++sub_x) {
-            //debug("Next iteration of sub_x: sub_x = %i", sub_x);
 
-            // Lines "start" from the middle of their pixels, so only calculate
-            // area of half the pixel (3 columns).
+        // Iterate through subpixel grid.
+        for (int sub_x = 0; sub_x < 5; ++sub_x) {
+
+            // Edge Case: Lines "start" from the middle of their pixels, so if
+            // this is first pixel, only calculate area of half the pixel - 3
+            // columns.
             if (x == x0 && sub_x == 0) {
-                // First pixel we start at sub_x = 2.
+                // If first pixel, start at sub_x = 2.
                 sub_x = 2;
             }
-            // If d<0,
+
             if (d < 0) {
+                // If d<0, the line lies above the midpoint of our subpixel, so
+                // increment subpixel space's y; i.e. our y_counter.
                 d += bigIncr/5.0f;
-                // if y_counter is 4, increment y, otherwise increment counter
+
                 if (y_counter < 4) {
                     y_counter += 1;
+
+                // If y_counter == 4, increment framebuffer y, otherwise
+                // increment y_counter
                 } else if (y_counter == 4) {
+                    // We cross a horizontal line, so draw the bottom pixel and
+                    // then move onto the next two pixels above.
+
+                    // Draw bottom pixel.
+                    draw_pixel(x, y+1, subpixels_below);
+                    // Now move up and work on next two pixels. Swap subpixel
+                    // area count and set subpixels_above to zero and reset
+                    // y_counter.
+                    subpixels_below = subpixels_above;
+                    subpixels_above = 0;
                     y_counter = 0;
                     y += 1;
                 } else {
-                    debug("We shouldn't be here");
+                    debug("We shouldn't be here, quit.");
                     assert(0);
                 }
-
             }
             else {
+                // Line lies below midpoint, increment d by yIncr/5
                 d += yIncr/5.0f;
             }
+
+            // After each iteration through a subpixel column, we add 5
+            // subpixels to the areas. We know the number of subpixels in this
+            // columnn that are below the line, this is y_counter, and 
+            // conveniently, we therefore know that the number of subpixels
+            // above the line are therefore 5 - the subpixels below.
             subpixels_above += (5 - y_counter);
             subpixels_below += (y_counter);
-            debug("(%i.%i, %i.%i) - (%i, %i)", x, sub_x, y, y_counter, subpixels_above, subpixels_below);
 
-            // If this is the last pixel, only calculate area for 3 columns, and then stop (by setting sub_x to 4);
+            // Edge Case: If this is the last pixel (x == x1), only calculate
+            // area for 3 subpixel columns, and then stop.
             if (x == x1 && sub_x == 2) {
                 sub_x = 4;
             }
         }
-        // We have the nice property that the subpixels below the bottom line is the same as the subpixels below the top line, but they are in different pixels, so we can do shading using this.
-        // Draw two pixels, because our line is dropped by -.5, we want to draw to pixels y+1 and y+2.
-        debug("(%i, %i) - shading: 1 - %i / 25", x, y+1, subpixels_above);
-        float shading_bottom = 1 - ((float) subpixels_above / 25.0f);
-        *(unzoom_fb+fb_offset(y+1, x, 0)) = shading_bottom;
-        *(unzoom_fb+fb_offset(y+1, x, 1)) = shading_bottom;
-        *(unzoom_fb+fb_offset(y+1, x, 2)) = shading_bottom;
-
-        debug("(%i, %i) - shading: 1 - %i / 25", x, y+2, subpixels_below);
-        float shading_top = 1 - ((float) subpixels_below / 25.0f);
-        *(unzoom_fb+fb_offset(y+2, x, 0)) = shading_top;
-        *(unzoom_fb+fb_offset(y+2, x, 1)) = shading_top;
-        *(unzoom_fb+fb_offset(y+2, x, 2)) = shading_top;
+        // When we cross a vertical line between two pixels (whenever we
+        // increment x), we draw two pixels. Because our line starts at 
+        // y0 - .5, our pixels' y-values are y+1 and y+2
+        draw_pixel(x, y+1, subpixels_above);
+        draw_pixel(x, y+2, subpixels_below);
     }
 }
-
 
 /**
- * Draw a pixel with a given degree of grayness depending on the area that is 
- * @param y0 - y-value beginning coordinate in the subpixel grid system.
- * @param y1 - y-value ending coordinate in the subpixel grid system.
- *    // We break the pixel into a 5x5 grid and consider it as a separate
- *    "frame". In this frame we find the area using Bressenham's alg.
- * y0 is start of line in 5x5 grid frame.
+ * Draw a pixel with a specific shading.
+ * @param x - the x-coordinate of the pixel to be drawn.
+ * @param y - the y-coordinate of the pixel to be drawn.
+ * @param area - the number of subpixels (1 pixel can be broken down into a 5x5
+ *      subpixel grid) that are covered by the line. We then shade the pixel a
+ *      color according to 1 - area/25. Precondition: 0 <= area <= 25.
  */
-void draw_pixel_antialiased(int fb_x, float y0, float y1, dir_t dir) {
-    debug("draw_pixel_antialiased()");
-    // Adapted draw_line_aliased() function
-
-    // Integer part of y0 is row of framebuffer.
-    int fb_y = int_part(y0);
-    debug("fb_y: %i", fb_y);
-
-    int y = (int) (frac_part(y0)*5.0f);
-    debug("y: %i", y);
-    // Bressenham's algorithm for line-drawing.
-
-    // Our line starts at the left border of the subpixel grid and goes to
-    // right border.
-    int x0 = 1, x1 = 5;
-
-    float xIncr = x1 - x0;
-    float yIncr = y0 - y1;
-    float bigIncr = xIncr + yIncr;
-    float C = x0*y1 - x1*y0;
-
-    float d = yIncr*(x0+1.0f) + xIncr*(y0+.5f) + C;
-    int area = 0;
-    //debug("d: %f", d);
-    for (int x=x0; x<=x1; ++x) {
-        // Calculate number of subpixels contained by line.
-
-        if (d < 0) {
-            //debug("d1: %f", d);
-            d += bigIncr;
-            y += 1;
-        }
-        else {
-            //debug("d2: %f", d);
-            d += yIncr;
-        }
-        // If dir == DOWN, we want to count area below line.
-        if (dir == DOWN) area += y;
-        // if dir == UP, count area above line (5 - y-value).
-        else area += (5 - y);
-        debug("area: %i", area);
-
-    }
+void draw_pixel(int x, int y, int area) {
+    debug("draw_pixel() x: %i, y: %i, area: %i", x, y, area);
     float shading = 1 - (float) area / 25.0f;
-    *(unzoom_fb+fb_offset(fb_y, fb_x, 0)) = shading;
-    *(unzoom_fb+fb_offset(fb_y, fb_x, 1)) = shading;
-    *(unzoom_fb+fb_offset(fb_y, fb_x, 2)) = shading;
+    *(unzoom_fb+fb_offset(y, x, 0)) = shading;
+    *(unzoom_fb+fb_offset(y, x, 1)) = shading;
+    *(unzoom_fb+fb_offset(y, x, 2)) = shading;
 }
+
 /** Draw the line.
  */
 void draw_line() {
@@ -509,20 +492,4 @@ void display_unzoom() {
  */
 void display_zoom() {
     draw_pixels(zoom_fb);
-}
-
-/**
- * Get the fractional part of a float
- * @param value - a float
- */
-float frac_part(float value) {
-    return value - int_part(value);
-}
-
-/**
- * Get the integer part of a float
- * @param value - a float
- */
-int int_part(float value) {
-    return (int) value;
 }
