@@ -1,0 +1,75 @@
+\usepackage{listings}
+\lstdefinestyle{ccode}{
+	language=C,
+	keywordstyle=\ttfamily\underbar,
+	morekeywords={DEFINE},
+	keywordstyle=[2]\texttt,
+	morekeywords=[2]{GLfloat},
+	identifierstyle=\texttt,
+	columns=flexible,
+}
+\lstdefinestyle{pythoncode}{
+		language=Python,
+        keywordstyle=\ttfamily\underbar,
+        keywordstyle=[2]\texttt,
+        identifierstyle=\texttt,
+		commentstyle=\texttt,
+		stringstyle=\texttt,
+		tabsize=4,
+		showstringspaces=false,
+}
+\lstdefinestyle{javacode}{
+		language=Java,
+        keywordstyle=\ttfamily\underbar,
+		morekeywords={enum,assert},
+        keywordstyle=[2]\texttt,
+        identifierstyle=\texttt,
+		commentstyle=\texttt,
+		stringstyle=\texttt,
+		tabsize=4,
+		showstringspaces=false,
+}
+\lstdefinestyle{pseudocode}{
+		language=pseudo,
+        keywordstyle=\normalfont\textbf,
+        keywordstyle=[2]\normalfont\textsf,
+		keywordstyle=[3]\normalfont\textsf,
+        identifierstyle=\normalfont\textit,
+		commentstyle=\textrm,
+		stringstyle=\texttt,
+		tabsize=4,
+		showstringspaces=false,
+}
+\lstdefinelanguage{pseudo}%
+  {%identifierstyle=\normalfont\textit,
+   columns=fullflexible,
+   mathescape=true,
+%   numbers=left,
+%   numberblanklines=false,
+   breaklines=true,
+   breakatwhitespace=true,
+   morekeywords={if,then,else,elseif,endif,switch,endswitch,case,while,do,endw,repeat,until,for,foreach,in,endf,break,begin,end,function,return,or,and,to,by,input,output,continue,type,of},
+   morekeywords=[2]{int, float, bool, char, string, seq, list, array, set, map, void, stack, collection},
+   morekeywords=[3]{true, false, null},
+   % keywordstyle=\normalfont\textbf,
+   literate={<-}{{${}\leftarrow{}$}}{2} {[]}{[ ]}{2} {!=}{{${}\not={}$}}{1} {<=}{${}\leq{}$}{1} {>=}{${}\geq{}$}{1},
+   % keywordstyle=[2]\normalfont\texttt,
+   morecomment=[l]{Input:},
+   morecomment=[l]{Parameter},
+   morecomment=[l]{Parameters:},
+   morecomment=[l]{Returns:},
+   morecomment=[l]{Effect:},
+   morecomment=[l]{Pre-conditions:},
+   morecomment=[l]{State:},
+   morecomment=[l]{Messages:},
+   morecomment=[l]{//},
+   morecomment=[s]{(*}{*)},
+   moredelim=[is]{(**}{**)},
+   morestring=[b]",
+   % morestring=[b]',
+  }
+  [keywords]
+
+% \def\keyw#1{\lstinline!#1!}
+% \def\jkeyw#1{\lstinline[style=javacode]!#1!}
+% \def\pskeyw#1{\lstinline[style=pseudocode]!#1!}

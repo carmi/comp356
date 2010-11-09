@@ -1,0 +1,47 @@
+% hw3.tex - Comp356 HW 3 Answers
+
+% Declare page size and style.
+\documentclass[a4paper, 12pt]{article}
+\pagestyle{plain}
+\usepackage{fullpage}
+
+% Declare which packages to use..
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{listings}
+
+% Import listsings and utils
+\input{./utils.tex}
+\input{./comp356-listings.tex}
+
+\lstset{style=pseudocode}
+
+\begin{document}
+\hwheader{Comp 356: Computer Graphics\\Homework 3}
+
+\textsc{Problem 1.} Adapt the algorithm to define a function midpoint big slope that takes the same input
+but assumes that the input defines a line with slope in the range $[1, \infty]$. Again assume that $x0 < x1$
+and $y0 < y1$.
+
+\begin{lstlisting}
+    function midpoint_big_slope(x0 : int, y0 : int, x1 : int, y1 : int) : void
+    begin
+        (* Compute the value of f at the midpoint of the next pixel above the current pixel *)
+        F <- (y0 - y1)(x0 + $\frac{1}{2}$ ) + (x1 - x0)(y0 + 1) + x0*y1 - x1*y0
+
+        x <- x0
+        for y <- y0 to y1 by 1 do
+            draw(x, y)
+
+            (* If F < 0, the line lies above the midpoint of the next pixel above the current pixel. *)
+            if F < 0 then
+                F <- F + (x1 - x0)
+            else
+                F <- F + (x1 - x0) + (y0 - y1)
+                x <- x + 1
+            endif
+        endf
+    end
+\end{lstlisting}
+
+\end{document}
