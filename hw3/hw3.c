@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 
     // Create the main window (reset() sets the display callback).
-    glutCreateWindow("Antialiased Bressenham line drawing");
+    glutCreateWindow("Antialiased Bressenham Line Drawing");
     glutReshapeFunc(handle_resize);
     create_menu();
     glutAttachMenu(GLUT_RIGHT_BUTTON);
@@ -239,6 +239,7 @@ int fb_offset(int y, int x, int c) {
 /** Draw the line segment using the standard incremental Bressenham algorithm.
  */
 void draw_line_aliased() {
+
     debug("draw_line_aliased()");
     // Bressenham's algorithm for line-drawing.
 
@@ -277,33 +278,80 @@ void draw_line_aliased() {
  */
 void draw_line_antialiased() {
     debug("draw_line_antialiased()");
+    // Bressenham's algorithm for line-drawing.
 
-    int x0 = line_coord[0][0], y0 = line_coord[0][1];
-    int x1 = line_coord[1][0], y1 = line_coord[1][1];
+    // Draw a line from x0, y0 - .5 to x1, y1 - .5
+    int x0 = line_coord[0][0];
+    float y0 = ((float) line_coord[0][1]) - 0.5f;
+    int x1 = line_coord[1][0];
+    float y1 = ((float) line_coord[1][1]) - 0.5f;
 
-    // We'll draw two lines each .5 below and above our actual line.
-    float slope = (float) (y1 - y0) / (float) (x1 - x0);
-    // y = mx +b; b = y - mx; where b = intercept.
-    // Our first line is .5 above our ideal line, so intercept +.5
-    float intercept_top = ((float) y0) - slope*((float)x0) + 1.0f;
+    float xIncr = (float) x1 - (float) x0;
+    float yIncr = y0 - y1;
+    float bigIncr = xIncr + yIncr;
+    float C = x0*y1 - x1*y0;
 
+    int y = (int) y0;
+    float d = yIncr*(x0+0.6f) + xIncr*(y0+0.5f) + C;
+    debug("d: %f", d);
+    int y_counter = 0;
     for (int x=x0; x<=x1; ++x) {
-        // For each x coordinate of our line, using y=mx+b slope formula, find
-        // the y value of the line's intersection with the left pixel border
-        // (the y-value when we plug in the x from our for loop.
-        float y_top = slope*((float)x) + intercept_top;
-        debug("y_top: %f", y_top);
-        float y_bot = y_top - 1.0f;
-        debug("y_bot: %f", y_bot);
+        //debug("Next iteration of x: x = %i", x);
+        // We are in a pixel, iterate through it's 5x5 grid
+        int subpixels_below = 0;
+        int subpixels_above = 0;
+        for (int sub_x = 0; sub_x < 5; ++sub_x) {
+            //debug("Next iteration of sub_x: sub_x = %i", sub_x);
 
-        // The y value at the end of end of the pixel is y + slope.
-        float y_top_end = y_top + slope;
-        float y_bot_end = y_top_end - 1.0f;
+            // Lines "start" from the middle of their pixels, so only calculate
+            // area of half the pixel (3 columns).
+            if (x == x0 && sub_x == 0) {
+                // First pixel we start at sub_x = 2.
+                sub_x = 2;
+            }
+            // If d<0,
+            if (d < 0) {
+                d += bigIncr/5.0f;
+                // if y_counter is 4, increment y, otherwise increment counter
+                if (y_counter < 4) {
+                    y_counter += 1;
+                } else if (y_counter == 4) {
+                    y_counter = 0;
+                    y += 1;
+                } else {
+                    debug("We shouldn't be here");
+                    assert(0);
+                }
 
-        draw_pixel_antialiased(x, y_top, y_top_end, DOWN);
-        draw_pixel_antialiased(x, y_bot, y_bot_end, UP);
+            }
+            else {
+                d += yIncr/5.0f;
+            }
+            subpixels_above += (5 - y_counter);
+            subpixels_below += (y_counter);
+            debug("(%i.%i, %i.%i) - (%i, %i)", x, sub_x, y, y_counter, subpixels_above, subpixels_below);
+
+            // If this is the last pixel, only calculate area for 3 columns, and then stop (by setting sub_x to 4);
+            if (x == x1 && sub_x == 2) {
+                sub_x = 4;
+            }
+        }
+        // We have the nice property that the subpixels below the bottom line is the same as the subpixels below the top line, but they are in different pixels, so we can do shading using this.
+        // Draw two pixels, because our line is dropped by -.5, we want to draw to pixels y+1 and y+2.
+        debug("(%i, %i) - shading: 1 - %i / 25", x, y+1, subpixels_above);
+        float shading_bottom = 1 - ((float) subpixels_above / 25.0f);
+        *(unzoom_fb+fb_offset(y+1, x, 0)) = shading_bottom;
+        *(unzoom_fb+fb_offset(y+1, x, 1)) = shading_bottom;
+        *(unzoom_fb+fb_offset(y+1, x, 2)) = shading_bottom;
+
+        debug("(%i, %i) - shading: 1 - %i / 25", x, y+2, subpixels_below);
+        float shading_top = 1 - ((float) subpixels_below / 25.0f);
+        *(unzoom_fb+fb_offset(y+2, x, 0)) = shading_top;
+        *(unzoom_fb+fb_offset(y+2, x, 1)) = shading_top;
+        *(unzoom_fb+fb_offset(y+2, x, 2)) = shading_top;
     }
 }
+
 
 /**
  * Draw a pixel with a given degree of grayness depending on the area that is 
