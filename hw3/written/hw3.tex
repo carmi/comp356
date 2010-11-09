@@ -44,4 +44,40 @@ and $y0 < y1$.
     end
 \end{lstlisting}
 
+\textsc{Problem 2.} Consider the circle given by $x^2 + y^2 - R = 0$. Give an analogous algorithm for
+rasterizing the arc of this circle that lies between the negative y-axis and the line $y = −x$. Your
+algorithm must be incremental, and you must justify your increments. Do not worry that your
+final x-coordinate may not be an integer.
+
+We derive the incremental step by adding $\Delta x$ to the x value.
+\begin{eqnarray*}
+    && f(x, y) = x^2 + y^2 -R \\
+    && f(x + \Delta x, y) = (x + \Delta x)^2 + y^2 -R = x^2 + 2x \Delta x + (\Delta x)^2 + y^2 -R \\
+    && f(x + \Delta x, y) - f(x, y) = 2x\Delta x + (\Delta x)^2 \\
+\end{eqnarray*}
+So this is the incremental step for x
+\begin{lstlisting}
+    function circle_arc(R : int) : void
+    begin
+        (* Compute the value of F at the midpoint of the next pixel to the right. *)
+
+        (* We start at lowest point on circle, x = 0, y = -R and move to the right. *)
+        x <- 0
+        y <- -R
+        F <- $(x - \frac{1}{2})^2 + (y - 1)^2 + R$
+        for x <- 0 to R by 1 do
+            $draw(x, y)$
+
+            (* If $F<0$, the midpoint of the next pixel is inside the circle, so increment the y-pixel, regardless, increment the value of F. *)
+            if F < 0 then
+                F <- $F + $
+                y <- $y + 1$
+            else
+                F <- $F + 3$
+            endif
+        endf
+    end
+        
+\end{lstlisting}
+
 \end{document}
