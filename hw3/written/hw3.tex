@@ -45,37 +45,48 @@ and $y0 < y1$.
 \end{lstlisting}
 
 \textsc{Problem 2.} Consider the circle given by $x^2 + y^2 - R = 0$. Give an analogous algorithm for
-rasterizing the arc of this circle that lies between the negative y-axis and the line $y = −x$. Your
+rasterizing the arc of this circle that lies between the negative y-axis and the line $y = -x$. Your
 algorithm must be incremental, and you must justify your increments. Do not worry that your
-final x-coordinate may not be an integer.
+final x-coordinate may not be an integer.\\
 
-We derive the incremental step by adding $\Delta x$ to the x value.
+We derive the incremental x-step by adding $\lambda$ to the x value.
 \begin{eqnarray*}
     && f(x, y) = x^2 + y^2 -R \\
-    && f(x + \Delta x, y) = (x + \Delta x)^2 + y^2 -R = x^2 + 2x \Delta x + (\Delta x)^2 + y^2 -R \\
-    && f(x + \Delta x, y) - f(x, y) = 2x\Delta x + (\Delta x)^2 \\
+    && f(x + \lambda, y) = (x + \lambda)^2 + y^2 -R = x^2 + 2x \lambda + \lambda^2 + y^2 -R \\
+    && f(x + \lambda, y) - f(x, y) = 2x\lambda + \lambda^2
 \end{eqnarray*}
-So this is the incremental step for x
+So this difference $2x\lambda + \lambda^2$ is the incremental step for x. Similarly, we derive the incremental step for $x + \lambda$ and $y + \sigma$.
+\begin{eqnarray*}
+    && f(x + \lambda, y + \sigma) = (x + \lambda)^2 + (y + \sigma)^2 - R = x^2 + 2x\lambda + \lambda^2 + y^2 + 2y\sigma + \sigma^2 - R \\
+    && f(x + \lambda, y + \sigma) - f(x, y) = 2x\lambda + \lambda^2 + 2y\sigma + \sigma^2
+\end{eqnarray*}
+So for x- and y-steps of 1, our incremental steps are:
+\begin{eqnarray*}
+    f(x+1, y) =& f(x, y) + 2x + 1 \\
+    f(x+1, y+1) =& f(x, y) + 2x + 2y + 2
+\end{eqnarray*}
 \begin{lstlisting}
     function circle_arc(R : int) : void
     begin
-        (* Compute the value of F at the midpoint of the next pixel to the right. *)
-
-        (* We start at lowest point on circle, x = 0, y = -R and move to the right. *)
+        (* We start at lowest point on circle, x = 0, y = -R and move to the midpoint of the next pixel to the right(1 unit to the right, 1/2 unit up).  *)
         x <- 0
         y <- -R
-        F <- $(x - \frac{1}{2})^2 + (y - 1)^2 + R$
-        for x <- 0 to R by 1 do
+        (* Compute the value of F at the midpoint of the next pixel to the right. *)
+        F <- $(x - 1)^2 + (y - \frac{1}{2})^2 - R$
+
+        (* The arc of the circle ends on line $y  = -x$. All points on $y = -x$ have x equal to absolute value of y, so iterate while $x < \left| y \right|$. *)
+        while (x < abs(y)) do
             $draw(x, y)$
 
             (* If $F<0$, the midpoint of the next pixel is inside the circle, so increment the y-pixel, regardless, increment the value of F. *)
             if F < 0 then
-                F <- $F + $
+                F <- $F + 2x + 2y + 2$
                 y <- $y + 1$
             else
-                F <- $F + 3$
+                F <- $F + 2x + 1$
             endif
-        endf
+            x <- x + 1
+        endw
     end
         
 \end{lstlisting}
