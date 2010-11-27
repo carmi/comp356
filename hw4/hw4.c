@@ -22,9 +22,9 @@
 #include <GL/glut.h>
 #endif
 
-#include "maze.h"
 #include "geom356.h"
 #include "debug.h"
+#include "maze.h"
 
 #define max(a, b) ((a < b ? b : a))
 
@@ -182,7 +182,8 @@ void init_gl(int maze_height, int maze_width) {
     glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 1) ;
     
     // Background color.
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f) ;
+    //glClearColor(0.0f, 0.0f, 0.0f, 0.0f) ;
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f) ;
 
 
     // Viewpoint position.
@@ -308,13 +309,84 @@ void draw_axes() {
     glEnd() ;
     glEnable(GL_LIGHTING) ;
 }
+
+
+/**
+ * Draw a square of side-length 2 in the xy-plane centered at the origin. This
+ * is used to color the start and end cells of the maze.
+ */
+void draw_square() {
+    debug("draw_square()");
+
+    // Specify the material for the square.
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, green_plastic.diffuse) ;
+    glMaterialfv(GL_FRONT, GL_SPECULAR, green_plastic.specular) ;
+    glMaterialf(GL_FRONT, GL_SHININESS, green_plastic.phong_exp) ;
+
+    glBegin(GL_QUADS);
+    // z=0 plane.
+    glNormal3f(0.0, 0.0, 0.0) ;
+    glVertex3f(-1.0, -1.0, 0.0) ;
+    glVertex3f(1.0, -1.0, 0.0) ;
+    glVertex3f(1.0, 1.0, 0.0) ;
+    glVertex3f(-1.0, 1.0, 0.0) ;
+    glEnd();
+}
+
+/**
+ * Draw a wall in the maze in the world frame by translating and rotating a
+ * draw_square object..
+ * @param row - the row of the maze cell.
+ * @param col - the column of the maze cell.
+ * @param direction - in which direction to draw the wall. This is an unsigned
+ * char defined in maze.h and maze.c.
+ */
+void draw_wall(float row, float col, unsigned char direction) {
+    debug("draw_wall()");
+
+    // Make sure we're talking about the m-v xfrm stack.
+    glMatrixMode(GL_MODELVIEW) ;
+
+    // Push a copy of the current m-v xfrm onto the stack.
+    glPushMatrix() ;
+
+    // Define the model xfrm.
+    glTranslatef(row, 0.0, col);
+
+    // Rotate wall depending on direction.
+
+    switch (direction) {
+        debug("1");
+        case NORTH:
+            glTranslatef(0.0f, 0.0f, 1.0f);
+        case EAST:
+            glTranslatef(1.0f, 0.0f, 0.0f);
+            glRotatef(90.0f, 0, 1, 0);
+        case SOUTH:
+        case WEST:
+            glRotatef(90.0f, 0, 1, 0);
+        default:
+            debug("default %x", direction);
+            //assert(0) ;
+    }
+    //assert(0) ;
+    ;
+
+    // Draw the wall.
+    draw_rect();
+
+    // Undo the model xfrm.
+    glPopMatrix();
+}
+
+
 /**
  * Draw a rectangular solid length 1, width .25, height 1, along the x-axis
  * centered at the origin. This object should be used create the floor and
  * walls of the maze.
  */
-void draw_wall() {
-    debug("draw_wall()");
+void draw_rect() {
+    debug("draw_rect()");
 
     // Specify the material for the wall.
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, gold.diffuse) ;
@@ -363,12 +435,58 @@ void draw_wall() {
     glVertex3f(-0.5, -0.5, -0.125) ;
     glVertex3f(0.5, -0.5, -0.125) ;
     glVertex3f(0.5, -0.5, 0.125) ;
-
     glEnd();
+}
+
+/**
+ * Draw the maze by transforming draw_rect() and draw_square() objects. The maze will be drawn on the x-z plane. 
+ */
+void draw_maze() {
+    debug("draw_maze()");
+
+    cell_t* maze_start = get_start(maze) ;
+    cell_t* maze_end = get_end(maze) ;
+    
+    int maze_width = get_ncols(maze) ;
+    int maze_height = get_ncols(maze) ;
+
+    // Draw squares on start and end cell
+
+    // Make sure we're talking about the m-v xfrm stack.
+    glMatrixMode(GL_MODELVIEW) ;
+
+    // Draw the walls.  First draw the west and south exterior walls, then
+    // draw any north or west walls of each cell.
+    for (float i=0.0f; i<maze_width; ++i) {
+        for (float j=0.0f; j<maze_height; ++j) {
+            
+            // Draw west exterior walls - if i==0
+            if (i==0.0f) {
+                draw_rect(i, j, SOUTH);
+            }
 
 
+            // Draw south exterior walls - if j==0
+            if (has_wall(maze, get_cell(maze, j, i), NORTH)) {
+
+                // Push a copy of the current m-v xfrm onto the stack.
+                glPushMatrix() ;
+
+                // Define the model xfrm.
+                glTranslatef(i, 0.0, j);
+
+                // Draw the wall.
+                draw_rect();
+
+                // Undo the model xfrm.
+                glPopMatrix();
+            }
+
+        }
+    }
 
 }
+
 /** Draw num_faces of the cube.
  */
 
@@ -476,11 +594,18 @@ void handle_display() {
     // place in the world.  See set_lights() for more info.
     glLightfv(GL_LIGHT0, GL_POSITION, far_light.position) ;
 
-    draw_axes() ;
+    draw_axes();
     
-    //draw_cube() ;
-    draw_wall();
+    draw_rect();
+    draw_square();
+    //draw_maze();
 
+    draw_wall(3.0, 0.0, NORTH);
+    draw_wall(3.0, 0.0, WEST);
+    draw_wall(3.0, 0.0, SOUTH);
+    draw_wall(3.0, 0.0, EAST);
+
+    //draw_cube();
     // Draw several cubes, all as transforms of the basic cube.
     // To do so, we *start* the model-view (viewing) transform with
     // a "model" transform (which, in previous sample code, we think
@@ -504,8 +629,8 @@ void handle_display() {
     // model xfrm.  When we want to undo the model xfrm, we just pop the
     // stack.
     
-    /*
     // Make sure we're talking about the m-v xfrm stack.
+    /*
     glMatrixMode(GL_MODELVIEW) ;
 
     // Push a copy of the current m-v xfrm onto the stack.
@@ -528,11 +653,10 @@ void handle_display() {
     // almost always want to do your translation last!
     glPushMatrix() ;
     glTranslatef(-10.0, 2.0, 0.0) ;
-    glRotatef(30, 10, 0, 1) ;
+    glRotatef(40, 10, 0, 1) ;
     draw_cube() ;
     glPopMatrix() ;
     */
-
 
     if (do_print_position) print_position() ;
 
