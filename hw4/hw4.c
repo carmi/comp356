@@ -358,19 +358,25 @@ void draw_wall(float row, float col, unsigned char direction) {
     switch (direction) {
         debug("1");
         case NORTH:
+            debug("NORTH");
             glTranslatef(0.0f, 0.0f, 1.0f);
+            break;
         case EAST:
-            glTranslatef(1.0f, 0.0f, 0.0f);
+            debug("EAST");
+            glTranslatef(0.375f, 0.0f, 0.5f);
             glRotatef(90.0f, 0, 1, 0);
+            break;
         case SOUTH:
+            debug("SOUTH");
+            break;
         case WEST:
+            debug("WEST");
+            glTranslatef(-0.375f, 0.0f, 0.5f);
             glRotatef(90.0f, 0, 1, 0);
+            break;
         default:
-            debug("default %x", direction);
-            //assert(0) ;
+            assert(0) ;
     }
-    //assert(0) ;
-    ;
 
     // Draw the wall.
     draw_rect();
@@ -457,34 +463,25 @@ void draw_maze() {
 
     // Draw the walls.  First draw the west and south exterior walls, then
     // draw any north or west walls of each cell.
-    for (float i=0.0f; i<maze_width; ++i) {
-        for (float j=0.0f; j<maze_height; ++j) {
-            
-            // Draw west exterior walls - if i==0
-            if (i==0.0f) {
-                draw_rect(i, j, SOUTH);
+
+    for (float i=0.0; i<maze_width; ++i) {
+        for (float j=0.0; j<maze_height; ++j) {
+            // Draw south wall if height==0
+            if (j == 0.0) {
+                draw_wall(i, j, SOUTH);
             }
-
-
-            // Draw south exterior walls - if j==0
+            // Draw west wall if width==0
+            if (i == 0.0) {
+                draw_wall(i, j, WEST);
+            }
             if (has_wall(maze, get_cell(maze, j, i), NORTH)) {
-
-                // Push a copy of the current m-v xfrm onto the stack.
-                glPushMatrix() ;
-
-                // Define the model xfrm.
-                glTranslatef(i, 0.0, j);
-
-                // Draw the wall.
-                draw_rect();
-
-                // Undo the model xfrm.
-                glPopMatrix();
+                draw_wall(i, j, NORTH);
             }
-
+            if (has_wall(maze, get_cell(maze, j, i), EAST)) {
+                draw_wall(i ,j, EAST);
+            }
         }
     }
-
 }
 
 /** Draw num_faces of the cube.
@@ -598,12 +595,12 @@ void handle_display() {
     
     draw_rect();
     draw_square();
-    //draw_maze();
+    draw_maze();
 
-    draw_wall(3.0, 0.0, NORTH);
-    draw_wall(3.0, 0.0, WEST);
-    draw_wall(3.0, 0.0, SOUTH);
-    draw_wall(3.0, 0.0, EAST);
+    //draw_wall(3.0, 0.0, NORTH);
+    //draw_wall(3.0, 0.0, SOUTH);
+    //draw_wall(3.0, 0.0, WEST);
+    //draw_wall(3.0, 0.0, EAST);
 
     //draw_cube();
     // Draw several cubes, all as transforms of the basic cube.
