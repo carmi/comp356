@@ -58,7 +58,6 @@ float view_plane_far = 100.0f ;
 
 
 // Display callback:  draws the maze.
-void initialize_maze(int, int) ;
 void draw_maze() ;
 
 // Callbacks.
@@ -137,7 +136,7 @@ int main(int argc, char **argv) {
     glutInit(&argc, argv) ;
 
     // Handle command line arguments.
-    do_print_position = false ;
+    do_print_position = true ;
     for (int i=0; i<argc; ++i) {
         if (strcmp(argv[i], "--position") == 0) do_print_position = true ;
     }
@@ -155,7 +154,7 @@ int main(int argc, char **argv) {
     // Initialize the maze.
     int maze_width = atoi(argv[1]) ;
     int maze_height = atoi(argv[2]) ;
-    initialize_maze(maze_height, maze_width) ;
+    maze = make_maze(maze_height, maze_width, time(NULL)) ;
 
 
     // Initialize GL.
@@ -198,14 +197,6 @@ void init_gl() {
     set_camera() ;
 
 }
-
-/*  Initialize the maze by building all possible walls.
- */
-void initialize_maze(int maze_height, int maze_width) {
-    maze = make_maze(maze_height, maze_width, time(NULL)) ;
-}
-
-
 
 
 /** Set the camera transformation.  Viewpoint is given by the eye
@@ -296,45 +287,49 @@ void draw_axes() {
     glDisable(GL_LIGHTING) ;
     glBegin(GL_LINES) ;
     glColor3f(0.0, 0.0, 1.0) ;
-    glVertex3f(0.0f, 0.0f, -100.0f) ;
+    glVertex3f(0.0f, 0.0f, 0.0f) ;
     glVertex3f(0.0f, 0.0f, 100.0f) ;
-    // Draw lines parallel to z-axes.
-    for (int i=0; i<get_ncols(maze) + 1; ++i) {
-        glVertex3f((float) i, 0.0f, 0.0f) ;
-        glVertex3f((float) i, 0.0f, (float) get_nrows(maze)) ;
-    }
     glColor3f(1.0, 0.0, 0.0) ;
-    glVertex3f(-100.0f, 0.0f, 0.0f) ;
+    glVertex3f(0.0f, 0.0f, 0.0f) ;
     glVertex3f(100.0f, 0.0f, 0.0f) ;
     for (int j=0; j<get_nrows(maze) + 1; ++j) {
-        glVertex3f(0.0f, 0.0f,(float) j) ;
-        glVertex3f((float) get_ncols(maze), 0.0f, (float) j) ;
+        glVertex3f(0.0f, (float) j, 0.0f) ;
+        glVertex3f((float) get_ncols(maze), (float) j, 0.0f) ;
     }
     glColor3f(0.0, 1.0, 0.0) ;
-    glVertex3f(0.0f, -100.0f, 0.0f) ;
+    glVertex3f(0.0f, 0.0f, 0.0f) ;
     glVertex3f(0.0f, 100.0f, 0.0f) ;
+    // Draw lines parallel to y-axes.
+    for (int i=0; i<get_ncols(maze) + 1; ++i) {
+        glVertex3f((float) i, 0.0f, 0.0f) ;
+        glVertex3f((float) i, (float) get_nrows(maze), 0.0f) ;
+    }
     glEnd() ;
     glEnable(GL_LIGHTING) ;
 
+    //TODO remove
+    /*
     glBegin(GL_TRIANGLES);
     glVertex3f(1.0f, 0.0f, 5.0f);
     glVertex3f(2.0f, 0.0f, 5.0f);
     glVertex3f(2.0f, 0.0f, 6.0f);
     glEnd();
+    */
 }
 
 
 /**
  * Draw a square of side-length 2 in the xy-plane centered at the origin. This
  * is used to color the start and end cells of the maze.
+ * @param material - the material of the square.
  */
-void draw_square() {
+void draw_square(material_t material) {
     debug("draw_square()");
 
     // Specify the material for the square.
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, green_plastic.diffuse) ;
-    glMaterialfv(GL_FRONT, GL_SPECULAR, green_plastic.specular) ;
-    glMaterialf(GL_FRONT, GL_SHININESS, green_plastic.phong_exp) ;
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, material.diffuse) ;
+    glMaterialfv(GL_FRONT, GL_SPECULAR, material.specular) ;
+    glMaterialf(GL_FRONT, GL_SHININESS, material.phong_exp) ;
 
     glBegin(GL_QUADS);
     // z=0 plane.
@@ -347,6 +342,34 @@ void draw_square() {
 }
 
 /**
+ * Draw a marker square on the bottom floor of the maze by transforming the
+ * draw_square object. The new marker square will be centered at cell given in
+ * the parameters.
+ * @param row - the row of the maze cell to place the marker.
+ * @param col - the column of the maze cell to place the marker.
+ * @param material - the material of the square.
+ */
+void draw_marker(float row, float col, material_t material) {
+    // Make sure we're talking about the m-v xfrm stack.
+    glMatrixMode(GL_MODELVIEW) ;
+
+    // Push a copy of the current m-v xfrm onto the stack.
+    glPushMatrix() ;
+
+    // Define model transform.
+    glTranslatef(col + 0.5f, row + 0.5f, 0.0f);
+    glScalef(0.25f, 0.25, 1.0f);
+
+    // Draw the square.
+    draw_square(material);
+
+    // Undo the model transform.
+    glPopMatrix();
+
+}
+
+
+/**
  * Draw a wall in the maze in the world frame by translating and rotating a
  * draw_square object. A wall is a draw_rect rectangle that sits on the positive x-z plane with length and height 1.25 and width .25.
  * @param row - the row of the maze cell.
@@ -357,6 +380,7 @@ void draw_square() {
 void draw_wall(float row, float col, unsigned char direction) {
     //debug("draw_wall()");
 
+    // TODO: should this possibly be further up the call sequence?
     // Make sure we're talking about the m-v xfrm stack.
     glMatrixMode(GL_MODELVIEW) ;
 
@@ -364,32 +388,33 @@ void draw_wall(float row, float col, unsigned char direction) {
     glPushMatrix() ;
 
     // Define the model xfrm.
-    // Move walls up onto x-z plane and corner at (0,0,0).
-    glTranslatef(row + 0.5f, 0.5f, col);
+    // Move walls up onto x-y plane and corner at (0,0,0).
+    glTranslatef(col + 0.5f, row, 0.5f);
     // Rotate wall depending on direction.
-
 
     switch (direction) {
         case NORTH:
             //debug("NORTH");
-            glTranslatef(0.0f, 0.0f, 1.0f);
+            glTranslatef(0.0f, 1.0f, 0.0f);
             break;
         case EAST:
             //debug("EAST");
-            glTranslatef(-0.5f, 0.0f, 0.5f);
-            glRotatef(90.0f, 0.0f, 1.0f, 0.0f);
+            glTranslatef(0.5f, 0.5f, 0.0f);
+            glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
             break;
         case SOUTH:
             //debug("SOUTH");
             break;
         case WEST:
             //debug("WEST");
-            glTranslatef(0.5f, 0.0f, 0.5f);
-            glRotatef(90.0f, 0.0f, 1.0f, 0.0f);
+            glTranslatef(-0.5f, 0.5f, 0.0f);
+            glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
             break;
         default:
             assert(0) ;
     }
+    // Rotate walls to be parallel perpendicular to x-y plane.
+    glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
     // Stretch walls so the overlap cleanly.
     glScalef(1.25f, 1.0f, 1.0f);
 
@@ -473,46 +498,28 @@ void draw_maze() {
     int maze_height = get_nrows(maze) ;
 
     // Draw squares on start and end cell
-
-    // Make sure we're talking about the m-v xfrm stack.
-    glMatrixMode(GL_MODELVIEW) ;
+    draw_marker(maze_start->r, maze_start->c, green_plastic);
+    draw_marker(maze_end->r, maze_end->c, red_plastic);
 
     // Draw the walls.  First draw the east and south exterior walls, then
     // draw any north or west walls of each cell.
 
-    for (float x=0.0f; x<maze_width; ++x) {
-        for (float z=0.0f; z<maze_height; ++z) {
+    for (float i=0.0f; i<maze_width; ++i) {
+        for (float j=0.0f; j<maze_height; ++j) {
             // Draw south wall if height==0
-            if (z == 0.0f) {
-                draw_wall(x, z, SOUTH);
+            if (j == 0.0f) {
+                draw_wall(j, i, SOUTH);
             }
             // Draw west wall if width==0
-            if (x == 0.0f) {
-                draw_wall(x, z, EAST);
+            if (i == 0.0f) {
+                draw_wall(j, i, WEST);
             }
-            if (has_wall(maze, get_cell(maze, z, x), NORTH)) {
-                draw_wall(x, z, NORTH);
+            if (has_wall(maze, get_cell(maze, (int) j, (int) i), NORTH)) {
+                draw_wall(j, i, NORTH);
             }
-            if (has_wall(maze, get_cell(maze, z, x), EAST)) {
-                draw_wall(x, z, EAST);
+            if (has_wall(maze, get_cell(maze, (int) j, (int) i), EAST)) {
+                draw_wall(j, i, EAST);
             }
-            if (has_wall(maze, get_cell(maze, z, x), SOUTH)) {
-                draw_wall(x, z, SOUTH);
-            }
-            if (has_wall(maze, get_cell(maze, z, x), WEST)) {
-                draw_wall(x, z, WEST);
-            }
-            /*
-            if (has_wall(maze, get_cell(maze, z, x), WEST)) {
-                glBegin(GL_TRIANGLES);
-                glVertex3f(x, 0.0f, z);
-                glVertex3f(x, 0.0f, z+0.8f);
-                glVertex3f(x+0.7f, 0.0f, z);
-                glEnd();
-
-            }
-            */
-
         }
     }
 }
@@ -627,68 +634,8 @@ void handle_display() {
     draw_axes();
     
     //draw_rect();
-    draw_square();
+    //draw_square();
     draw_maze();
-
-    //draw_wall(0.0f, 0.0f, NORTH);
-    //draw_wall(3.0f, 0.0f, WEST);
-    //draw_wall(0.0f, 0.0f, SOUTH);
-    //draw_wall(0.0f, 0.0f, EAST);
-    //if (has_wall(maze, get_cell(maze, 0.0f, 3.0f), WEST)) debug("has west wall 3,0");
-    //else debug("probelmo");
-
-    //draw_cube();
-    // Draw several cubes, all as transforms of the basic cube.
-    // To do so, we *start* the model-view (viewing) transform with
-    // a "model" transform (which, in previous sample code, we think
-    // of as the identity).  It is usually easiest to think of the model
-    // transform as transforming vertices that are specified in the world
-    // frame (both source and target) rather than as a change-of-frame
-    // transformation.
-
-    // To "insert" a model transformation into the beginning of the
-    // model-view transform, we need to multiply the current m-v xfrm
-    // on the left by the corresponding model xfrm.  That's just what the
-    // glTranslate, glRotate, etc., functions do.  
-
-    // We are likely to want a different model transform for each object
-    // that we draw.  We could undo the previous tranform by multiplying
-    // by the inverse of the previous transform.  But GL provides an
-    // easier solution:  the "m-v xfrm" is actually on a stack of xfrms,
-    // and the current m-v xfrm is whatever is on the top of that stack.
-    // To make it easy to "undo" a model xfrm, we first push a copy of the
-    // current xfrm onto the stack (glPushStack()), then multiply by the
-    // model xfrm.  When we want to undo the model xfrm, we just pop the
-    // stack.
-    
-    // Make sure we're talking about the m-v xfrm stack.
-    /*
-    glMatrixMode(GL_MODELVIEW) ;
-
-    // Push a copy of the current m-v xfrm onto the stack.
-    glPushMatrix() ;
-
-    // Define the model xfrm.
-    glTranslatef(0.0, 0.0, -5.0) ;
-
-    // Draw the cube.
-    draw_cube() ;
-
-    // Undo the model xfrm.
-    glPopMatrix() ;
-
-    // Remember that in terms of our conventions for reprsenting xfrms as
-    // matrices, the GL transform function F (e.g., glTranslate) multiplies
-    // the current matrix on the right by the matrix defined by F.  The
-    // upshot is:  the last operation specified is the first operation
-    // applied.  So here we rotate the cube then translate it.  You will
-    // almost always want to do your translation last!
-    glPushMatrix() ;
-    glTranslatef(-10.0, 2.0, 0.0) ;
-    glRotatef(40, 10, 0, 1) ;
-    draw_cube() ;
-    glPopMatrix() ;
-    */
 
     if (do_print_position) print_position() ;
 
