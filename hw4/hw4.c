@@ -71,7 +71,7 @@ void handle_special_key(int, int, int) ;
 void init() ;
 
 // GL initialization.
-void init_gl(int, int) ;
+void init_gl() ;
 
 // Application data.
 bool do_print_position ;    // Whether or not to print the position.
@@ -159,7 +159,7 @@ int main(int argc, char **argv) {
 
 
     // Initialize GL.
-    init_gl(maze_width, maze_height) ;
+    init_gl() ;
 
     // Enter the main event loop.
     debug("Main loop") ;
@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
 /**
  * Initialize OpenGL. Set our world frame to be the width and height of the maze.
  */
-void init_gl(int maze_height, int maze_width) {
+void init_gl() {
     debug("init_gl") ;
     // GL initialization.
     glEnable(GL_DEPTH_TEST) ;
@@ -202,9 +202,7 @@ void init_gl(int maze_height, int maze_width) {
 /*  Initialize the maze by building all possible walls.
  */
 void initialize_maze(int maze_height, int maze_width) {
-
     maze = make_maze(maze_height, maze_width, time(NULL)) ;
-
 }
 
 
@@ -300,14 +298,29 @@ void draw_axes() {
     glColor3f(0.0, 0.0, 1.0) ;
     glVertex3f(0.0f, 0.0f, -100.0f) ;
     glVertex3f(0.0f, 0.0f, 100.0f) ;
+    // Draw lines parallel to z-axes.
+    for (int i=0; i<get_ncols(maze) + 1; ++i) {
+        glVertex3f((float) i, 0.0f, 0.0f) ;
+        glVertex3f((float) i, 0.0f, (float) get_nrows(maze)) ;
+    }
     glColor3f(1.0, 0.0, 0.0) ;
     glVertex3f(-100.0f, 0.0f, 0.0f) ;
     glVertex3f(100.0f, 0.0f, 0.0f) ;
+    for (int j=0; j<get_nrows(maze) + 1; ++j) {
+        glVertex3f(0.0f, 0.0f,(float) j) ;
+        glVertex3f((float) get_ncols(maze), 0.0f, (float) j) ;
+    }
     glColor3f(0.0, 1.0, 0.0) ;
     glVertex3f(0.0f, -100.0f, 0.0f) ;
     glVertex3f(0.0f, 100.0f, 0.0f) ;
     glEnd() ;
     glEnable(GL_LIGHTING) ;
+
+    glBegin(GL_TRIANGLES);
+    glVertex3f(1.0f, 0.0f, 5.0f);
+    glVertex3f(2.0f, 0.0f, 5.0f);
+    glVertex3f(2.0f, 0.0f, 6.0f);
+    glEnd();
 }
 
 
@@ -335,14 +348,14 @@ void draw_square() {
 
 /**
  * Draw a wall in the maze in the world frame by translating and rotating a
- * draw_square object..
+ * draw_square object. A wall is a draw_rect rectangle that sits on the positive x-z plane with length and height 1.25 and width .25.
  * @param row - the row of the maze cell.
  * @param col - the column of the maze cell.
  * @param direction - in which direction to draw the wall. This is an unsigned
  * char defined in maze.h and maze.c.
  */
 void draw_wall(float row, float col, unsigned char direction) {
-    debug("draw_wall()");
+    //debug("draw_wall()");
 
     // Make sure we're talking about the m-v xfrm stack.
     glMatrixMode(GL_MODELVIEW) ;
@@ -351,32 +364,35 @@ void draw_wall(float row, float col, unsigned char direction) {
     glPushMatrix() ;
 
     // Define the model xfrm.
-    glTranslatef(row, 0.0, col);
-
+    // Move walls up onto x-z plane and corner at (0,0,0).
+    glTranslatef(row + 0.5f, 0.5f, col);
     // Rotate wall depending on direction.
 
+
     switch (direction) {
-        debug("1");
         case NORTH:
-            debug("NORTH");
+            //debug("NORTH");
             glTranslatef(0.0f, 0.0f, 1.0f);
             break;
         case EAST:
-            debug("EAST");
-            glTranslatef(0.375f, 0.0f, 0.5f);
-            glRotatef(90.0f, 0, 1, 0);
+            //debug("EAST");
+            glTranslatef(-0.5f, 0.0f, 0.5f);
+            glRotatef(90.0f, 0.0f, 1.0f, 0.0f);
             break;
         case SOUTH:
-            debug("SOUTH");
+            //debug("SOUTH");
             break;
         case WEST:
-            debug("WEST");
-            glTranslatef(-0.375f, 0.0f, 0.5f);
-            glRotatef(90.0f, 0, 1, 0);
+            //debug("WEST");
+            glTranslatef(0.5f, 0.0f, 0.5f);
+            glRotatef(90.0f, 0.0f, 1.0f, 0.0f);
             break;
         default:
             assert(0) ;
     }
+    // Stretch walls so the overlap cleanly.
+    glScalef(1.25f, 1.0f, 1.0f);
+
 
     // Draw the wall.
     draw_rect();
@@ -392,7 +408,7 @@ void draw_wall(float row, float col, unsigned char direction) {
  * walls of the maze.
  */
 void draw_rect() {
-    debug("draw_rect()");
+    //debug("draw_rect()");
 
     // Specify the material for the wall.
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, gold.diffuse) ;
@@ -454,32 +470,49 @@ void draw_maze() {
     cell_t* maze_end = get_end(maze) ;
     
     int maze_width = get_ncols(maze) ;
-    int maze_height = get_ncols(maze) ;
+    int maze_height = get_nrows(maze) ;
 
     // Draw squares on start and end cell
 
     // Make sure we're talking about the m-v xfrm stack.
     glMatrixMode(GL_MODELVIEW) ;
 
-    // Draw the walls.  First draw the west and south exterior walls, then
+    // Draw the walls.  First draw the east and south exterior walls, then
     // draw any north or west walls of each cell.
 
-    for (float i=0.0; i<maze_width; ++i) {
-        for (float j=0.0; j<maze_height; ++j) {
+    for (float x=0.0f; x<maze_width; ++x) {
+        for (float z=0.0f; z<maze_height; ++z) {
             // Draw south wall if height==0
-            if (j == 0.0) {
-                draw_wall(i, j, SOUTH);
+            if (z == 0.0f) {
+                draw_wall(x, z, SOUTH);
             }
             // Draw west wall if width==0
-            if (i == 0.0) {
-                draw_wall(i, j, WEST);
+            if (x == 0.0f) {
+                draw_wall(x, z, EAST);
             }
-            if (has_wall(maze, get_cell(maze, j, i), NORTH)) {
-                draw_wall(i, j, NORTH);
+            if (has_wall(maze, get_cell(maze, z, x), NORTH)) {
+                draw_wall(x, z, NORTH);
             }
-            if (has_wall(maze, get_cell(maze, j, i), EAST)) {
-                draw_wall(i ,j, EAST);
+            if (has_wall(maze, get_cell(maze, z, x), EAST)) {
+                draw_wall(x, z, EAST);
             }
+            if (has_wall(maze, get_cell(maze, z, x), SOUTH)) {
+                draw_wall(x, z, SOUTH);
+            }
+            if (has_wall(maze, get_cell(maze, z, x), WEST)) {
+                draw_wall(x, z, WEST);
+            }
+            /*
+            if (has_wall(maze, get_cell(maze, z, x), WEST)) {
+                glBegin(GL_TRIANGLES);
+                glVertex3f(x, 0.0f, z);
+                glVertex3f(x, 0.0f, z+0.8f);
+                glVertex3f(x+0.7f, 0.0f, z);
+                glEnd();
+
+            }
+            */
+
         }
     }
 }
@@ -593,14 +626,16 @@ void handle_display() {
 
     draw_axes();
     
-    draw_rect();
+    //draw_rect();
     draw_square();
     draw_maze();
 
-    //draw_wall(3.0, 0.0, NORTH);
-    //draw_wall(3.0, 0.0, SOUTH);
-    //draw_wall(3.0, 0.0, WEST);
-    //draw_wall(3.0, 0.0, EAST);
+    //draw_wall(0.0f, 0.0f, NORTH);
+    //draw_wall(3.0f, 0.0f, WEST);
+    //draw_wall(0.0f, 0.0f, SOUTH);
+    //draw_wall(0.0f, 0.0f, EAST);
+    //if (has_wall(maze, get_cell(maze, 0.0f, 3.0f), WEST)) debug("has west wall 3,0");
+    //else debug("probelmo");
 
     //draw_cube();
     // Draw several cubes, all as transforms of the basic cube.
