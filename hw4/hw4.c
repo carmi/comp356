@@ -42,19 +42,33 @@ maze_t* maze ;
 int win_width ;
 int win_height ;
 
-// Viewing data.
+// Viewing data - x, y, and z coordinates of eye position. The eye represents
+// where the "player" is in the maze.
+float eye_x, eye_y, eye_z;
+
+// Heading - a scale [0, 360) of degrees that indicate the direction you are
+// facing in the maze. heading of 0 is North, and heading increases clockwise.
+// So a heading of 90 is East, 270 is West.
+float heading;
+
+// Look-at position (world coordinates).
+//point3_t look_at = {0.0f, 0.0f, 0.0f} ;
+// Up direction.
+vector3_t up_dir = {0.0f, 0.0f, 1.0f} ;
+
+#define EYE_DIST_INCR .1f
+#define HEADING_INCR 5.0
+//
+//
 // Eye is located distance eye_r from origin; angle eye_theta from +x axis
 // in xz-plane; angle eye_phi from xz-plane.
 float eye_r, eye_theta, eye_phi ;
-point3_t look_at = {0.0f, 0.0f, 0.0f} ;          // Look-at position (world coordinates).
-vector3_t up_dir = {0.0f, 1.0f, 0.0f} ;              // Up direction.
-#define EYE_DIST_INCR .1f
 #define EYE_THETA_INCR 2.0*M_PI/180 ;
 #define EYE_PHI_INCR 2.0*M_PI/180 ;
 
 // View-volume specification in camera frame basis.
-float view_plane_near = 4.0f ;
-float view_plane_far = 100.0f ; 
+float view_plane_near = 0.25f ;
+float view_plane_far = 40.0f ;
 
 
 // Display callback:  draws the maze.
@@ -128,6 +142,7 @@ material_t blue_plastic = {
 } ;
 
 int main(int argc, char **argv) {
+    debug("heading incrment value: %f", HEADING_INCR);
 
     // Initialize the drawing window.
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB | GLUT_DEPTH ) ;
@@ -184,8 +199,15 @@ void init_gl() {
     //glClearColor(0.0f, 0.0f, 0.0f, 0.0f) ;
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f) ;
 
-
+    // TODO: set beginning eye at start cell
     // Viewpoint position.
+    eye_x = 0.0f;
+    eye_y = 0.0f;
+    eye_z = 0.75f;
+
+    // Set the heading.
+    heading = 0.0f;
+
     eye_r = sqrt(48) ;
     eye_theta = M_PI_4 ;
     eye_phi = M_PI_4 ;
@@ -201,23 +223,22 @@ void init_gl() {
 
 /** Set the camera transformation.  Viewpoint is given by the eye
  *  coordinates; we look at the origin with up-direction along the
- *  +y axis.
+ *  +z axis.
  */
 void set_camera() {
     debug("set_camera()") ;
 
-    // Cartesian coordinates of the viewpoint.
-    float eye_x, eye_y, eye_z ;
-    eye_y = eye_r*sin(eye_phi) ;
-    float eye_xz_r = eye_r*cos(eye_phi) ;
-    eye_x = eye_xz_r*cos(eye_theta) ;
-    eye_z = eye_xz_r*sin(eye_theta) ;
-
     // Set the model-view (i.e., camera) transform.
     glMatrixMode(GL_MODELVIEW) ;
     glLoadIdentity() ;
+    //TODO, do this manually instead of with gluLookAt
+    // Look at point defined by adding vector from eyepoint in deirection of heading with length 1 unit.
+
+    point3_t look_at = {eye_x + sin((double) (heading*M_PI/180.0f) ), eye_y + cos((double) (heading*M_PI/180.0f) ), eye_z};
+    debug("Look_at = (%f, %f, %f)", look_at.x, look_at.y, look_at.z) ;
     gluLookAt(eye_x, eye_y, eye_z,
             look_at.x, look_at.y, look_at.z,
+            //eye_x + sin((double) heading), eye_y + cos((double) heading), eye_z,
             up_dir.x, up_dir.y, up_dir.z) ;
 }
 
@@ -287,17 +308,17 @@ void draw_axes() {
     glDisable(GL_LIGHTING) ;
     glBegin(GL_LINES) ;
     glColor3f(0.0, 0.0, 1.0) ;
-    glVertex3f(0.0f, 0.0f, 0.0f) ;
+    glVertex3f(0.0f, 0.0f, -100.0f) ;
     glVertex3f(0.0f, 0.0f, 100.0f) ;
     glColor3f(1.0, 0.0, 0.0) ;
-    glVertex3f(0.0f, 0.0f, 0.0f) ;
+    glVertex3f(-100.0f, 0.0f, 0.0f) ;
     glVertex3f(100.0f, 0.0f, 0.0f) ;
     for (int j=0; j<get_nrows(maze) + 1; ++j) {
         glVertex3f(0.0f, (float) j, 0.0f) ;
         glVertex3f((float) get_ncols(maze), (float) j, 0.0f) ;
     }
     glColor3f(0.0, 1.0, 0.0) ;
-    glVertex3f(0.0f, 0.0f, 0.0f) ;
+    glVertex3f(0.0f, -100.0f, 0.0f) ;
     glVertex3f(0.0f, 100.0f, 0.0f) ;
     // Draw lines parallel to y-axes.
     for (int i=0; i<get_ncols(maze) + 1; ++i) {
@@ -598,21 +619,16 @@ void draw_string(char* s) {
 /** Print the position (distance, theta, and phi) on the screen.
  */
 void print_position() {
-    glColor3f(1.0f, 1.0f, 1.0f) ;
-
-    glWindowPos2s(10, 50) ;
-    char* s ;
-    asprintf(&s, "Eye distance: %f", eye_r) ;
-    draw_string(s) ;
-    free(s) ;
+    glColor3f(0.0f, 0.0f, 0.0f) ;
 
     glWindowPos2s(10, 30) ;
-    asprintf(&s, "Theta = %f", eye_theta) ;
+    char* s ;
+    asprintf(&s, "Camera position = (%f, %f, %f)", eye_x, eye_y, eye_z) ;
     draw_string(s) ;
     free(s) ;
 
     glWindowPos2s(10, 10) ;
-    asprintf(&s, "Phi = %f", eye_phi) ;
+    asprintf(&s, "Heading = %f; Heading (rads) = %f", heading, heading*M_PI/180.0f) ;
     draw_string(s) ;
     free(s) ;
 }
@@ -637,7 +653,7 @@ void handle_display() {
     //draw_square();
     draw_maze();
 
-    if (do_print_position) print_position() ;
+    print_position() ;
 
     glFlush() ;
 }
@@ -658,12 +674,12 @@ void handle_key(unsigned char key, int x, int y) {
     switch (key) {
         case '+':
             debug("handle_key() - increase eye dist.");
-            eye_r += EYE_DIST_INCR ;
+            eye_z += EYE_DIST_INCR ;
             set_camera() ;
             break ;
         case '-':
             debug("handle_key() - decrease eye dist.");
-            eye_r = max(0.0f, eye_r - EYE_DIST_INCR) ;
+            eye_z -= EYE_DIST_INCR ;
             set_camera() ;
             break ;
         default:
@@ -674,8 +690,10 @@ void handle_key(unsigned char key, int x, int y) {
 
 /** Handle keyboard events:
  *
- *  - LEFT, RIGHT:  increment/decrement theta.
- *  - UP, DOWN:  increment/decrement phi.
+ *  - LEFT, RIGHT:  increment/decrement heading.
+ *  - UP, DOWN:  move eye position.
+ *      Move eye_x += EYE_DIST_INCR * sin(heading)
+ *      Move eye_y += EYE_DIST_INCR * cos(heading)
  *
  *  Redisplays will be requested for every key event.
  *
@@ -686,20 +704,24 @@ void handle_key(unsigned char key, int x, int y) {
 void handle_special_key(int key, int x, int y) {
     switch (key) {
         case GLUT_KEY_LEFT:
-            eye_theta += EYE_THETA_INCR ;
-            if (eye_theta >= 2*M_PI) eye_theta -= 2*M_PI ;
+            heading -= HEADING_INCR;
+            if (heading < 0.0f) heading += 360.0f ;
+            debug("GLUT_KEY_LEFT: heading = %f", heading);
             break ;
         case GLUT_KEY_RIGHT:
-            eye_theta -= EYE_THETA_INCR ;
-            if (eye_theta < 0) eye_theta += 2*M_PI ;
+            debug("GLUT_KEY_RIGHT: heading = %f", heading);
+            heading += HEADING_INCR;
+            if (heading >= 360.0f) heading -= 360.0f ;
             break ;
         case GLUT_KEY_UP:
-            eye_phi += EYE_PHI_INCR ;
-            if (eye_phi >= 2*M_PI) eye_phi -= 2*M_PI ;
+            eye_x += EYE_DIST_INCR*((float) sin((double) (heading*M_PI/180.0f) ));
+            eye_y += EYE_DIST_INCR*((float) cos((double) (heading*M_PI/180.0f) )) ;
+            debug("GLUT_KEY_UP: eye_x = %f, eye_y = %f", eye_x, eye_y);
             break ;
         case GLUT_KEY_DOWN:
-            eye_phi -= EYE_PHI_INCR ;
-            if (eye_phi < 0) eye_phi += 2*M_PI ;
+            eye_x -= EYE_DIST_INCR*((float) sin((double) (heading*M_PI/180.0f) ));
+            eye_y -= EYE_DIST_INCR*((float) cos((double) (heading*M_PI/180.0f) )) ;
+            debug("GLUT_KEY_DOWN: eye_x = %f, eye_y = %f", eye_x, eye_y);
             break ;
         default:
             break ;
