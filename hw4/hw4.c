@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #ifdef __MACOSX__
 #include <OpenGL/gl.h>
@@ -37,6 +38,12 @@
 
 // the maze itself
 maze_t* maze ;
+
+int frames = 10;
+int bird_eye_toggle = 0;
+bool bird_eye = false;
+bool bird_eye_up;
+bool bird_eye_down;
 
 // Window data.
 int win_width ;
@@ -218,6 +225,74 @@ void init_gl() {
     // Set the viewpoint.
     set_camera() ;
 
+}
+
+void bird_eye_helper() {
+    debug("bird_eye_helper with toggle (before) == %i", bird_eye_toggle);
+    if (bird_eye_toggle == 0) {
+        bird_eye_toggle = 1;
+        frames = 10;
+    }
+    else if (bird_eye_toggle == 1) bird_eye_toggle = 2;
+    else if (bird_eye_toggle == 2) bird_eye_toggle = 0;
+
+    if (!bird_eye) {
+        bird_eye = true;
+        bird_eye_up = true;
+    }
+    else {
+        bird_eye = false;
+        bird_eye_down = true;
+    }
+
+    //frames = 10;
+    /*
+    for (int i = 10; i > 0; i--) {
+        set_bird_eye(i);
+        glutPostRedisplay() ;
+        sleep(1);
+    }
+    */
+}
+
+/** Set the camera transformation for the bird's eye view.  Viewpoint is given
+ *  by the eye coordinates; we look at the origin with up-direction along the
+ *  +z axis.
+ *  animate by making the move in frames steps.
+ */
+void set_bird_eye() {
+    debug("set_bird_eye(frames == %i)", frames) ;
+    if (bird_eye_toggle == 0) return;
+    if (bird_eye_toggle == 1 && frames == 1) return;
+
+    float height = 20.0f;
+
+    // Set the model-view (i.e., camera) transform.
+    glMatrixMode(GL_MODELVIEW) ;
+    glLoadIdentity() ;
+    //TODO, do this manually instead of with gluLookAt
+    // Look at point defined by adding vector from eyepoint in deirection of heading with length 1 unit.
+
+    // Up vector is same as look_at vector in set_camera()
+    point3_t up = {eye_x + sin((double) (heading*M_PI/180.0f) ), eye_y + cos((double) (heading*M_PI/180.0f) ), eye_z};
+
+    point3_t eye = {eye_x, eye_y, eye_z + (height/(float) frames)};
+
+    debug("Up vector = (%f, %f, %f)", up.x, up.y, up.z) ;
+    debug("Eye vector = (%f, %f, %f)", eye.x, eye.y, eye.z) ;
+    gluLookAt(eye.x, eye.y, eye.z,
+            eye_x, eye_y, eye_z,
+            up.x, up.y, up.z) ;
+
+    if (bird_eye_toggle == 1) {
+        frames -= 1;
+    }
+    if (bird_eye_toggle == 2) {
+        frames += 1;
+        if (frames == 10) bird_eye_toggle = 0;
+    }
+    sleep(0.1);
+    glutPostRedisplay() ;
 }
 
 
@@ -656,11 +731,41 @@ void handle_display() {
     print_position() ;
 
     glFlush() ;
+    
+    set_bird_eye();
 }
+
+
+/** Handle a display request by clearing the screen, drawing the axes
+ *  and cube, and printing the viewpoint position.
+ */
+void handle_animate() {
+    debug("handle_display()") ;
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT ) ;
+
+    // Note that the lights are sent through the pipeline, and a light's
+    // position is modified by the model-view transformation.  By setting the
+    // light's position here, we ensure that the light lives in a fixed
+    // place in the world.  See set_lights() for more info.
+    glLightfv(GL_LIGHT0, GL_POSITION, far_light.position) ;
+
+    draw_axes();
+    
+    //draw_rect();
+    //draw_square();
+    draw_maze();
+
+    print_position() ;
+
+    glFlush() ;
+}
+
+
 
 /** Handle keyboard events:
  *  
- *  - SPACE:  increment the number of faces of the cube to draw.
+ *  - SPACE: switch to bird's eye view.
  *  - +, -:  increment/decrement the distance to the origin of the viewpoint.
  *
  *  Redisplays will be requested from every key event.
@@ -669,9 +774,14 @@ void handle_display() {
  *  @param x the mouse x-position when <code>key</code> was pressed.
  *  @param y the mouse y-position when <code>key</code> was pressed.
  */
+// I think this has to return before GL does anything else
 void handle_key(unsigned char key, int x, int y) {
 
     switch (key) {
+        case ' ':
+            debug("handle_key() <space> - bird's eye view");
+            bird_eye_helper();
+            break ;
         case '+':
             debug("handle_key() - increase eye dist.");
             eye_z += EYE_DIST_INCR ;
