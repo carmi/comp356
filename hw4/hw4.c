@@ -40,7 +40,8 @@
 maze_t* maze ;
 
 int frames = 10;
-int bird_eye_toggle = 0;
+// TODO remove
+//int bird_eye_toggle = 0;
 bool bird_eye = false;
 bool bird_eye_up;
 bool bird_eye_down;
@@ -70,13 +71,20 @@ vector3_t up_dir = {0.0f, 0.0f, 1.0f} ;
 // Eye is located distance eye_r from origin; angle eye_theta from +x axis
 // in xz-plane; angle eye_phi from xz-plane.
 float eye_r, eye_theta, eye_phi ;
-#define EYE_THETA_INCR 2.0*M_PI/180 ;
-#define EYE_PHI_INCR 2.0*M_PI/180 ;
+#define EYE_THETA_INCR 2.0*M_PI/180 
+#define EYE_PHI_INCR 2.0*M_PI/180 
 
 // View-volume specification in camera frame basis.
 float view_plane_near = 0.25f ;
 float view_plane_far = 40.0f ;
 
+// Bird's eye animation settings
+#define ANIMATE_STEPS 20
+#define ANIMATE_SLEEP 0.1
+#define BIRD_EYE_HEIGHT 20
+enum be_state_t {DOWN, UPWARDS, UP, DOWNWARDS};
+enum be_state_t bird_eye_state;
+int bird_eye_depth;
 
 // Display callback:  draws the maze.
 void draw_maze() ;
@@ -212,6 +220,8 @@ void init_gl() {
     eye_y = 0.0f;
     eye_z = 0.75f;
 
+    bird_eye_state = DOWN;
+
     // Set the heading.
     heading = 0.0f;
 
@@ -227,8 +237,23 @@ void init_gl() {
 
 }
 
-void bird_eye_helper() {
-    debug("bird_eye_helper with toggle (before) == %i", bird_eye_toggle);
+/**
+ * Change value of bird_eye_state variable. Calling this method simply sets the
+ * valud of bird_eye_state to the next value in the list of possibilities or
+ * cycles the state. The cycle should look like:
+ * DOWN --> UPWARDS --> UP --> DOWNWARDS --> DOWN
+ */
+void bird_eye_toggle() {
+    debug("bird_eye_toggle");
+
+    // Use fact enums are ordered integers.
+    if (bird_eye_state == DOWNWARDS) {
+        bird_eye_state = DOWN;
+    } else {
+        bird_eye_state += 1;
+    }
+
+    /*
     if (bird_eye_toggle == 0) {
         bird_eye_toggle = 1;
         frames = 10;
@@ -246,7 +271,6 @@ void bird_eye_helper() {
     }
 
     //frames = 10;
-    /*
     for (int i = 10; i > 0; i--) {
         set_bird_eye(i);
         glutPostRedisplay() ;
@@ -259,40 +283,47 @@ void bird_eye_helper() {
  *  by the eye coordinates; we look at the origin with up-direction along the
  *  +z axis.
  *  animate by making the move in frames steps.
+ *
+ * This method mimics a recursive function. It either decrements the global
+ * bird_eye_depth variable and calls itself again, or returns (base case) if
+ * depth == 0.
+ *
  */
 void set_bird_eye() {
-    debug("set_bird_eye(frames == %i)", frames) ;
-    if (bird_eye_toggle == 0) return;
-    if (bird_eye_toggle == 1 && frames == 1) return;
-
-    float height = 20.0f;
-
-    // Set the model-view (i.e., camera) transform.
-    glMatrixMode(GL_MODELVIEW) ;
-    glLoadIdentity() ;
-    //TODO, do this manually instead of with gluLookAt
-    // Look at point defined by adding vector from eyepoint in deirection of heading with length 1 unit.
-
-    // Up vector is same as look_at vector in set_camera()
-    point3_t up = {eye_x + sin((double) (heading*M_PI/180.0f) ), eye_y + cos((double) (heading*M_PI/180.0f) ), eye_z};
-
-    point3_t eye = {eye_x, eye_y, eye_z + (height/(float) frames)};
-
-    debug("Up vector = (%f, %f, %f)", up.x, up.y, up.z) ;
-    debug("Eye vector = (%f, %f, %f)", eye.x, eye.y, eye.z) ;
-    gluLookAt(eye.x, eye.y, eye.z,
-            eye_x, eye_y, eye_z,
-            up.x, up.y, up.z) ;
-
-    if (bird_eye_toggle == 1) {
-        frames -= 1;
+    debug("set_bird_eye");
+    if (bird_eye_depth == 0) {
+        bird_eye_toggle();
+        return;
     }
-    if (bird_eye_toggle == 2) {
-        frames += 1;
-        if (frames == 10) bird_eye_toggle = 0;
+    else {
+
+        // Set the model-view (i.e., camera) transform.
+        glMatrixMode(GL_MODELVIEW) ;
+        glLoadIdentity() ;
+        // TODO, do this manually instead of with gluLookAt
+        // Look at point defined by adding vector from eyepoint in deirection of heading with length 1 unit.
+
+        // Up vector is same as look_at vector in set_camera()
+        point3_t up = { eye_x + sin((double) (heading*M_PI/180.0f) ), eye_y + cos((double) (heading*M_PI/180.0f) ), eye_z};
+        
+        float height_step = (float) (BIRD_EYE_HEIGHT/ANIMATE_STEPS);
+        float height;
+        if (bird_eye_state == UPWARDS) height = height_step*(ANIMATE_STEPS - bird_eye_depth);
+        else if (bird_eye_state == DOWNWARDS) height = height_step*(bird_eye_depth);
+        else assert(0); 
+
+        point3_t eye = {eye_x, eye_y, (eye_z + height) };
+
+        debug("Up vector = (%f, %f, %f)", up.x, up.y, up.z) ;
+        debug("Eye vector = (%f, %f, %f)", eye.x, eye.y, eye.z) ;
+        gluLookAt(eye.x, eye.y, eye.z,
+                eye_x, eye_y, eye_z,
+                up.x, up.y, up.z) ;
+
+        bird_eye_depth -= 1;
+        sleep(ANIMATE_SLEEP);
+        glutPostRedisplay() ;
     }
-    sleep(0.1);
-    glutPostRedisplay() ;
 }
 
 
@@ -713,6 +744,7 @@ void print_position() {
  */
 void handle_display() {
     debug("handle_display()") ;
+    if (!bird_eye_state == DOWN) set_bird_eye();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT ) ;
 
@@ -732,7 +764,6 @@ void handle_display() {
 
     glFlush() ;
     
-    set_bird_eye();
 }
 
 
@@ -779,8 +810,9 @@ void handle_key(unsigned char key, int x, int y) {
 
     switch (key) {
         case ' ':
-            debug("handle_key() <space> - bird's eye view");
-            bird_eye_helper();
+            debug("handle_key() <space> - bird's eye view %i", bird_eye_state);
+            bird_eye_depth = ANIMATE_STEPS;
+            bird_eye_toggle();
             break ;
         case '+':
             debug("handle_key() - increase eye dist.");
