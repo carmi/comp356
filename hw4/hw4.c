@@ -56,8 +56,12 @@ cell_t* maze_end;
 // where the "player" is in the maze.
 float pos_x, pos_y, pos_z;
 
-// TODO use this
-// float look_at_x, look_at_y, look_at_z;
+// Define the offset of height that player should look at. 0 is straight
+// forwards, negative values are looking down at the floor.
+#define LOOK_AT_HEIGHT_OFFSET -0.10
+
+// The look_at vector, the offset from pos_* to where the "player" is looking.
+float look_at_x, look_at_y, look_at_z;
 
 // Heading - a scale [0, 360) of degrees that indicate the direction you are
 // facing in the maze. heading of 0 is North, and heading increases clockwise.
@@ -72,7 +76,7 @@ float heading;
 
 // Define animation of bird's eye perspective. Separate animation into
 // ANIMATE_STEPS steps.
-#define ANIMATE_STEPS 15.0
+#define ANIMATE_STEPS 10.0
 
 // Duration of animation (in nanoseconds): used to determine time to sleep
 // between animate steps.
@@ -98,6 +102,15 @@ float bird_eye_height_step;
 // Sleep times; globals so they only need be calculated once.
 struct timespec interval;
 struct timespec remaining;
+
+// Define length (canonical object scaled along x-axis) of wall.
+#define WALL_LENGTH_SCALE 1.25f
+
+// Define width (canonical object scaled along y-axis) of wall.
+#define WALL_WIDTH_SCALE 1.0f
+
+// Define height (canonical object scaled along z-axis) of wall.
+#define WALL_HEIGHT_SCALE 1.0f
 
 // Application data.
 bool do_print_position;    // Whether or not to print the position.
@@ -165,6 +178,7 @@ void handle_special_key(int, int, int);
 // Application functions.
 void init();
 void init_maze(int maze_height, int maze_width);
+int move(float new_x, float new_y);
 
 // GL functions.
 void init_gl();
@@ -251,16 +265,20 @@ void init() {
     pos_x = maze_start->c + MAZE_CELL_LENGTH/2.0f;
     pos_y = maze_start->r + MAZE_CELL_LENGTH/2.0f;
     pos_z = EYE_HEIGHT;
+    set_look_at();
 
     // Start maze game at bird_eye view heading downwards.
-    bird_eye_depth = 10;
-    bird_eye_state = DOWNWARDS;
+    bird_eye_depth = ANIMATE_STEPS;
+    bird_eye_state = UPWARDS;
 
     // Calculate once the height step for bird eye animation.
     bird_eye_height_step = (float) (BIRD_EYE_HEIGHT/ANIMATE_STEPS);
 
     // Set the heading.
     heading = 0.0f;
+
+    // Set the lights.
+    set_lights();
 }
 
 /**
@@ -278,12 +296,6 @@ void init_gl() {
     
     // Background color.
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-    // Set the lights.
-    set_lights();
-
-    // Set the viewpoint.
-    set_camera();
 }
 
 /**
@@ -308,7 +320,7 @@ void bird_eye_toggle() {
  * position of player given by pos_[x|y|z] from bird eye at {pos_x, pos_y,
  * pos_z + some height} where height depends on which step or depth of
  * bird_eye animation we are at. Our up direction is the direction the player
- * is facing (the look_at vector in set_camara()).
+ * is facing (the look_at vector in set_camera()).
  *
  * Animation is defined by ANIMATE_* variables.
  *
@@ -330,11 +342,6 @@ void set_bird_eye() {
         glLoadIdentity();
         // TODO, do this manually instead of with gluLookAt
 
-        // Up vector is same as look_at vector in set_camera()
-        point3_t up = { pos_x + sin((double) (heading*M_PI/180.0f) ),
-                        pos_y + cos((double) (heading*M_PI/180.0f) ),
-                        pos_z};
-
         float height;
         if (bird_eye_state == UPWARDS) {
             // Need the +1 because on first call bird_eye_depth ==
@@ -347,13 +354,22 @@ void set_bird_eye() {
 
         point3_t bird_eye = {pos_x, pos_y, (pos_z + height) };
 
-        debug("bird_eye vector = (%f, %f, %f)", bird_eye.x, bird_eye.y, bird_eye.z);
-        debug("Look at vector = (%f, %f, %f)", pos_x, pos_y, pos_z);
-        debug("Up vector = (%f, %f, %f)", up.x, up.y, up.z);
+        // Look at is x, and y values of normal look_at_* vector, but z should
+        // always be 0 because the bird eye is looking straight down on the
+        // maze.
+        point3_t bird_look_at = {look_at_x, look_at_y, 0.0f};
 
+        debug("bird_eye vector = (%f, %f, %f)", bird_eye.x, bird_eye.y,
+                                bird_eye.z);
+        debug("Look at vector = (%f, %f, %f)", pos_x, pos_y, pos_z);
+        debug("up vector(look_at_*) = (%f, %f, %f)", bird_look_at.x,
+                                bird_look_at.y, bird_look_at.z);
+
+        // Up vector is same as look_at_* offset. Thus bird_eye view "up" is
+        // "forwards" in normal maze.
         gluLookAt(bird_eye.x, bird_eye.y, bird_eye.z,
                   pos_x, pos_y, pos_z,
-                  up.x, up.y, up.z);
+                  bird_look_at.x, bird_look_at.y, bird_look_at.z);
 
         bird_eye_depth -= 1;
         nanosleep(&interval, &remaining);
@@ -374,13 +390,8 @@ void set_camera() {
     glLoadIdentity();
     //TODO, do this manually instead of with gluLookAt
 
-    // Look at vector {x + sin(heading), y + cos(heading), z}
-    point3_t look_at = {pos_x + sin((double) (heading*M_PI/180.0f) ),
-                        pos_y + cos((double) (heading*M_PI/180.0f) ),
-                        pos_z};
-
     gluLookAt(pos_x, pos_y, pos_z,
-            look_at.x, look_at.y, look_at.z,
+            pos_x + look_at_x, pos_y + look_at_y, pos_z + look_at_z,
             up_dir.x, up_dir.y, up_dir.z);
 }
 
@@ -437,6 +448,67 @@ void handle_resize(int width, int height) {
     set_projection_viewport();
 
     glutPostRedisplay();
+}
+
+/**
+ * Update the global look_at vector look_at_x, look_at_y, look_at_z. This sets
+ * the look_at vector by using the heading and current position pos_[x|y|z] of
+ * "player". This function should be called after the pos_* or heading values
+ * change.
+ * Note: this is the offset or difference between the look_at vector and the
+ * position vector. Thus in set_camera the look_at vector to be used is pos_*
+ * + look_at_*, NOT simply look_at_*.
+ */
+void set_look_at() {
+    debug("look_at()");
+    look_at_x = sin((double) (heading*M_PI/180.0f) );
+    look_at_y = cos((double) (heading*M_PI/180.0f) );
+    look_at_z = LOOK_AT_HEIGHT_OFFSET;
+    debug("look_at_*) = (%f, %f, %f)", look_at_x, look_at_y, look_at_z);
+}
+
+/**
+ * Move the "player" as defined by pos_* coordinates to new position, unless
+ * new position is inside a wall.
+ *
+ * @param new_x - the x coordinate of the new desired position
+ * @param new_y - the y coordinate of the new desired position
+ * Return 0 if move was successful (there were no walls in the way), otherwise
+ * return -1.
+ * Prerequisite: POS_DIST_INCR is less than width of walls.
+ */
+int move(float new_x, float new_y) {
+    debug("move x=%f, y=%f", new_x, new_y);
+    // Check if new position will be inside a wall. Assuming POS_DIST_INCR is
+    // smaller than width of walls.
+
+    // Get cell that new position is in from maze.
+    cell_t* cell = get_cell(maze, (int) new_y, (int) new_x);
+
+    // Get decimal of position; if it is near the edge of the cell, see if
+    // there is a wall on that direction.
+    float dec_x = (new_x - (int) new_x);
+    float dec_y = (new_y - (int) new_y);
+    debug("dec_x = %f, dec_y = %f", dec_x, dec_y);
+    
+    // Walls go into cells canonical 0.25 times WALL_WIDTH_SCALE factor on each
+    // side. So on one side of cell it's half that.
+    float wall_width = (WALL_WIDTH_SCALE*0.25f)/2.0f;
+
+    // If dec_x or dec_y are within the top or bottom range of wall_width, then
+    // the position is inside a wall.
+
+    // TODO: Allow moving if there isn't a wall.
+    if ((dec_x <= wall_width) ||
+        (dec_x >= MAZE_CELL_LENGTH - wall_width) ||
+        (dec_y <= wall_width) ||
+        (dec_y >= MAZE_CELL_LENGTH - wall_width)) {
+        return -1;
+    } else {
+        pos_x = new_x;
+        pos_y = new_y;
+        return 0;
+    }
 }
 
 /** Draw the coordinate axes as line segments from -100 to +100 along
@@ -567,7 +639,7 @@ void draw_wall(float row, float col, unsigned char direction) {
     // Rotate walls to be parallel perpendicular to x-y plane.
     glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
     // Stretch walls so the overlap cleanly.
-    glScalef(1.25f, 1.0f, 1.0f);
+    glScalef(WALL_LENGTH_SCALE, WALL_WIDTH_SCALE, WALL_HEIGHT_SCALE);
 
     // Draw the wall.
     draw_rect();
@@ -653,7 +725,14 @@ void draw_maze() {
 
     for (float i=0.0f; i<maze_width; ++i) {
         for (float j=0.0f; j<maze_height; ++j) {
-            // Draw south wall if height==0
+            // Prim's algorithm will always leave a wall segment touching the
+            // North-East corner of the cell. Knowing this, we draw this part
+            // first, and the rest of our walls than do not have to overlap at
+            // all.
+            // Draw center box.
+            //draw_center(j, i);
+
+            //Draw south wall if height==0
             if (j == 0.0f) {
                 draw_wall(j, i, SOUTH);
             }
@@ -701,7 +780,7 @@ void print_position() {
  *  and cube, and printing the viewpoint position.
  */
 void handle_display() {
-    debug("handle_display()");
+    //debug("handle_display()");
     if (!bird_eye_state == DOWN) set_bird_eye();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -750,11 +829,13 @@ void handle_key(unsigned char key, int x, int y) {
         case '+':
             debug("handle_key() - increase eye dist.");
             pos_z += POS_DIST_INCR;
+            set_look_at();
             set_camera();
             break;
         case '-':
             debug("handle_key() - decrease eye dist.");
             pos_z -= POS_DIST_INCR;
+            set_look_at();
             set_camera();
             break;
         default:
@@ -789,18 +870,21 @@ void handle_special_key(int key, int x, int y) {
             if (heading >= 360.0f) heading -= 360.0f;
             break;
         case GLUT_KEY_UP:
-            pos_x += POS_DIST_INCR*((float) sin((double) (heading*M_PI/180.0f) ));
-            pos_y += POS_DIST_INCR*((float) cos((double) (heading*M_PI/180.0f) ));
+            if (move((pos_x + POS_DIST_INCR*look_at_x), (pos_y + POS_DIST_INCR*look_at_y)) == -1) {
+                debug("Can't move, wall in the way");
+            }
             debug("GLUT_KEY_UP: pos_x = %f, pos_y = %f", pos_x, pos_y);
             break;
         case GLUT_KEY_DOWN:
-            pos_x -= POS_DIST_INCR*((float) sin((double) (heading*M_PI/180.0f) ));
-            pos_y -= POS_DIST_INCR*((float) cos((double) (heading*M_PI/180.0f) ));
+            if (move((pos_x - POS_DIST_INCR*look_at_x), (pos_y - POS_DIST_INCR*look_at_y)) == -1) {
+                debug("Can't move, wall in the way");
+            }
             debug("GLUT_KEY_DOWN: pos_x = %f, pos_y = %f", pos_x, pos_y);
             break;
         default:
             break;
     }
+    set_look_at();
     set_camera();
     glutPostRedisplay();
 
