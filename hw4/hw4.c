@@ -115,14 +115,21 @@ void* visited_cells;
 struct timespec interval;
 struct timespec remaining;
 
+// Define enumeration of directions for wall corners
+enum corner_dir {SOUTHWEST, SOUTHEAST, NORTHEAST, NORTHWEST};
+
 // Define length (canonical object scaled along x-axis) of wall.
-#define WALL_LENGTH_SCALE 1.25f
+#define WALL_LENGTH_SCALE 0.75f
 
 // Define width (canonical object scaled along y-axis) of wall.
 #define WALL_WIDTH_SCALE 1.0f
 
 // Define height (canonical object scaled along z-axis) of wall.
 #define WALL_HEIGHT_SCALE 1.0f
+
+// Define MARKER_HEIGHT_FACTOR, the factor by which markers are placed slightly
+// above one another.
+#define MARKER_HEIGHT_FACTOR 50.0f
 
 // Materials and lights.  Note that colors are RGBA colors.  OpenGL lights
 // have diffuse, specular, and ambient components; we'll default to setting
@@ -182,8 +189,36 @@ material_t blue_plastic = {
 };
 
 material_t t_plastic = {
-    {0.75f, 0.0f, 0.75f, 1.0f},
-    {0.75f, 0.0f, 0.75f, 1.0f},
+    {0.75f, 0.45f, 0.45f, 1.0f},
+    {0.75f, 0.45f, 0.45f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f},
+    1000.0f
+};
+
+material_t orange = {
+    {1.0f, 0.45f, 0.0f, 1.0f},
+    {1.0f, 0.45f, 0.0f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f},
+    1000.0f
+};
+
+material_t green = {
+    {0.0f, 0.8f, 0.0f, 1.0f},
+    {0.0f, 0.8f, 0.0f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f},
+    1000.0f
+};
+
+material_t blue = {
+    {0.07f, 0.25f, 0.67f, 1.0f},
+    {0.07f, 0.25f, 0.67f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f},
+    1000.0f
+};
+
+material_t teal = {
+    {0.0f, 0.6f, 0.6f, 1.0f},
+    {0.0f, 0.6f, 0.6f, 1.0f},
     {1.0f, 1.0f, 1.0f, 1.0f},
     1000.0f
 };
@@ -200,6 +235,7 @@ void handle_special_key(int, int, int);
 void init();
 void init_maze(int maze_height, int maze_width);
 int move(float new_x, float new_y);
+void add_visited_cell(cell_t* cell);
 
 // GL functions.
 void init_gl();
@@ -211,7 +247,7 @@ void set_look_at();
 void draw_axes();
 void draw_square(material_t material);
 void draw_marker(int row, int col, float scale, material_t material);
-void draw_rect();
+void draw_rect(material_t material);
 void draw_wall(float row, float col, unsigned char direction);
 void draw_maze();
 
@@ -311,6 +347,7 @@ void init_gl() {
     // glCullFace(GL_BACK);
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
+    glEnable(GL_NORMALIZE);
     glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 1);
     
     // Background color.
@@ -636,7 +673,8 @@ void draw_square(material_t material) {
 /**
  * Draw a marker square on the bottom floor of the maze by transforming the
  * draw_square object. The new marker square will be centered at cell given in
- * the parameters.
+ * the parameters. If you draw multiple markers on the same square, markers of
+ * smaller scale will be placed on top.
  * @param row - the row of the maze cell to place the marker.
  * @param col - the column of the maze cell to place the marker.
  * @param scale - the value by which to scale the 
@@ -650,7 +688,13 @@ void draw_marker(int row, int col, float scale, material_t material) {
     glPushMatrix();
 
     // Define model transform.
-    glTranslatef(col + 0.5f, row + 0.5f, 0.0f);
+    // In order to have smaller markers be placed on top of larger markers, we
+    // draw them slightly above bigger markers. (HEIGHT_FACTOR -
+    // scale)/HEIGHT_FACTOR - 1 provides a ratio where a small scale is bigger
+    // than a greater scale. Exactly what we want.
+    float height = ((MARKER_HEIGHT_FACTOR - scale)/(MARKER_HEIGHT_FACTOR) -
+            1.0f );
+    glTranslatef(col + 0.5f, row + 0.5f, height);
     glScalef(scale, scale, 1.0f);
 
     // Draw the square.
@@ -660,11 +704,11 @@ void draw_marker(int row, int col, float scale, material_t material) {
     glPopMatrix();
 }
 
-
 /**
  * Draw a wall in the maze in the world frame by translating and rotating a
  * draw_square object. A wall is a draw_rect rectangle that sits on the
- * positive x-z plane with length and height 1.25 and width .25.
+ * positive x-y plane with dimensions WALL_[LENGTH|WIDTH|HEIGHT]_SCALE.
+ *
  * @param row - the row of the maze cell.
  * @param col - the column of the maze cell.
  * @param direction - in which direction to draw the wall. This is an unsigned
@@ -712,7 +756,63 @@ void draw_wall(float row, float col, unsigned char direction) {
     glScalef(WALL_LENGTH_SCALE, WALL_WIDTH_SCALE, WALL_HEIGHT_SCALE);
 
     // Draw the wall.
-    draw_rect();
+    draw_rect(orange);
+
+    // Undo the model xfrm.
+    glPopMatrix();
+}
+
+/**
+ * Draw the specified corner wall segment for a given cell. This corner segment
+ * is a transformed draw_rect with width and length equal to MAZE_CELL_LENGTH -
+ * WALL_LENGTH_SCALE and height WALL_HEIGHT_SCALE.
+ *
+ * @param row - the row of the maze cell.
+ * @param col - the column of the maze cell.
+ * @param direction - which corner of cell to draw, southwest corner is 0,
+ *        southeast corner 1, etc.
+ */
+void draw_corner(float row, float col, int corner_dir) {
+    //debug("draw_corner()");
+
+    glMatrixMode(GL_MODELVIEW);
+
+    // Push a copy of the current m-v xfrm onto the stack.
+    glPushMatrix();
+
+    // Define the model xfrm.
+    // Move walls up onto x-y plane and corner at (0,0,0).
+    glTranslatef(col, row, 0.5f);
+    // Rotate wall depending on direction.
+
+    switch (corner_dir) {
+        case NORTHWEST:
+            //debug("NORTHWEST");
+            glTranslatef(0.0f, 1.0f, 0.0f);
+            break;
+        case NORTHEAST:
+            //debug("NORTHEAST");
+            glTranslatef(1.0f, 1.0f, 0.0f);
+            break;
+        case SOUTHEAST:
+            //debug("SOUTHEAST");
+            glTranslatef(1.0f, 0.0f, 0.0f);
+            break;
+        case SOUTHWEST:
+            //debug("SOUTHWEST");
+            break;
+        default:
+            assert(0);
+    }
+    // Rotate walls to be parallel perpendicular to x-y plane.
+    glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+    // Stretch walls so the overlap cleanly.
+    float size = MAZE_CELL_LENGTH - WALL_LENGTH_SCALE;
+    //glScalef(size, size, WALL_HEIGHT_SCALE);
+    glScalef(size, MAZE_CELL_LENGTH, MAZE_CELL_LENGTH);
+
+    // Draw the wall.
+    draw_rect(orange);
 
     // Undo the model xfrm.
     glPopMatrix();
@@ -723,13 +823,13 @@ void draw_wall(float row, float col, unsigned char direction) {
  * centered at the origin. This object should be used create the floor and
  * walls of the maze.
  */
-void draw_rect() {
+void draw_rect(material_t material) {
     //debug("draw_rect()");
 
     // Specify the material for the wall.
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, gold.diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, gold.specular);
-    glMaterialf(GL_FRONT, GL_SHININESS, gold.phong_exp);
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, material.diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, material.specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, material.phong_exp);
 
     glBegin(GL_QUADS);
     // z=.125 plane.
@@ -794,31 +894,39 @@ void draw_maze() {
     }
 
 
-    // Draw squares on start cell, end cell, current cell.
+    // Draw squares on start cell, end cell, and current cell.
     draw_marker(maze_start->r, maze_start->c, 0.25f, green_plastic);
     draw_marker(maze_end->r, maze_end->c, 0.25f, red_plastic);
-    draw_marker((int) pos_y, (int) pos_x, 0.25f, t_plastic);
+    draw_marker((int) pos_y, (int) pos_x, 0.35f, t_plastic);
 
     
     // Draw the walls.  First draw the east and south exterior walls, then
     // draw any north or west walls of each cell.
+    
+    // Prim's algorithm will always leave a wall segment touching each
+    // corner of each cell. Knowing this, we draw this and walls
+    // separately so walls do not overlap.
+
+    // Draw the first southwest corner segment first. Then for south exterior
+    // walls draw the southeast corner segment and for west exterior walls draw
+    // the northwest corner segment. For each cell draw the northeast corner
+    // segment.
+    draw_corner(0.0f, 0.0f, SOUTHWEST);
 
     for (float i=0.0f; i<maze_width; ++i) {
         for (float j=0.0f; j<maze_height; ++j) {
-            // Prim's algorithm will always leave a wall segment touching the
-            // North-East corner of the cell. Knowing this, we draw this part
-            // first, and the rest of our walls than do not have to overlap at
-            // all.
-            // Draw center box.
-            //draw_center(j, i);
+            // For each cell draw northeast corner.
+            draw_corner(j, i, NORTHEAST);
 
-            //Draw south wall if height==0
+            //Draw south wall and southeast corner if height==0
             if (j == 0.0f) {
                 draw_wall(j, i, SOUTH);
+                draw_corner(j, i, SOUTHEAST);
             }
-            // Draw west wall if width==0
+            // Draw west wall and west wall corner if width==0
             if (i == 0.0f) {
                 draw_wall(j, i, WEST);
+                draw_corner(j, i, NORTHWEST);
             }
             if (has_wall(maze, get_cell(maze, (int) j, (int) i), NORTH)) {
                 draw_wall(j, i, NORTH);
@@ -897,7 +1005,7 @@ void handle_display() {
 
     draw_axes();
     
-    //draw_rect();
+    //draw_rect(teal);
     //draw_square();
     draw_maze();
 
