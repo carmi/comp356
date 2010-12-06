@@ -17,9 +17,6 @@ SOLUTION_FILES=hw4.o maze.o debug.h
 hw4 : $(HW4_DEPENDENCIES)
 	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $^ $(LDFLAGS) -l356
 
-hw3 : hw3.c debug.h
-	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) hw3.c $(LDFLAGS) $(LIBS)
-
 show_maze2d : show_maze2d.c maze.c
 	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) show_maze2d.c maze.c $(LDFLAGS) $(LIBS)
 

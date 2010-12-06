@@ -23,6 +23,7 @@
 #endif
 
 #include "geom356.h"
+#include "list356.h"
 #include "debug.h"
 #include "maze.h"
 
@@ -41,7 +42,7 @@ int win_height;
 vector3_t up_dir = {0.0f, 0.0f, 1.0f};
 
 // View-volume specification in camera frame basis.
-float view_plane_near = 0.25f;
+float view_plane_near = 0.05f;
 float view_plane_far = 40.0f;
 
 // Define width and height of maze cell
@@ -69,7 +70,7 @@ float look_at_x, look_at_y, look_at_z;
 float heading;
 
 // Define how big each "step" is on a key-press event
-#define POS_DIST_INCR .1f
+#define POS_DIST_INCR .2f
 
 // Define how much the heading changes on left, right key-press events.
 #define HEADING_INCR 5.0
@@ -83,7 +84,7 @@ float heading;
 #define ANIMATE_DURATION 300000000
 
 // Height above maze in bird eye view.
-#define BIRD_EYE_HEIGHT 10
+#define BIRD_EYE_HEIGHT 8
 
 // Height above maze in normal view.
 #define EYE_HEIGHT 0.75
@@ -99,6 +100,17 @@ enum bird_eye_state_t bird_eye_state;
 int bird_eye_depth;
 float bird_eye_height_step;
 
+// Application data
+// If "player" has reached the end cell of the maze.
+bool end_reached = false;
+
+// If a move returned -1 because of a wall, print visual feedback. hit_wall
+// keeps track of when a wall was hit.
+bool hit_wall = false;
+
+// Draw breadcrumbs by keeping track of visited cells.
+void* visited_cells;
+
 // Sleep times; globals so they only need be calculated once.
 struct timespec interval;
 struct timespec remaining;
@@ -111,9 +123,6 @@ struct timespec remaining;
 
 // Define height (canonical object scaled along z-axis) of wall.
 #define WALL_HEIGHT_SCALE 1.0f
-
-// Application data.
-bool do_print_position;    // Whether or not to print the position.
 
 // Materials and lights.  Note that colors are RGBA colors.  OpenGL lights
 // have diffuse, specular, and ambient components; we'll default to setting
@@ -137,6 +146,11 @@ GLfloat BLACK[4] = {0.0, 0.0, 0.0, 1.0};
 light_t far_light = {
     {20.0, 10.0, 0.0, 1.0},
     {0.75, 0.75, 0.75, 1.0}
+};
+
+light_t red_light = {
+    {20.0, 10.0, 0.0, 1.0},
+    {0.9, 0.25, 0.25, 1.0}
 };
 
 material_t gold = {
@@ -167,6 +181,13 @@ material_t blue_plastic = {
     1000.0f
 };
 
+material_t t_plastic = {
+    {0.75f, 0.0f, 0.75f, 1.0f},
+    {0.75f, 0.0f, 0.75f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f},
+    1000.0f
+};
+
 // Function Declarations
 
 // Callbacks.
@@ -184,11 +205,12 @@ int move(float new_x, float new_y);
 void init_gl();
 void set_lights();
 void set_camera();
+void set_look_at();
 
 // Canonical structure creation functions.
 void draw_axes();
 void draw_square(material_t material);
-void draw_marker(int row, int col, material_t material);
+void draw_marker(int row, int col, float scale, material_t material);
 void draw_rect();
 void draw_wall(float row, float col, unsigned char direction);
 void draw_maze();
@@ -201,12 +223,6 @@ int main(int argc, char **argv) {
     glutInitWindowSize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
     glutInitWindowPosition(DEFAULT_WINDOW_XORIG, DEFAULT_WINDOW_YORIG);
     glutInit(&argc, argv);
-
-    // Handle command line arguments.
-    do_print_position = true;
-    for (int i=0; i<argc; ++i) {
-        if (strcmp(argv[i], "--position") == 0) do_print_position = true;
-    }
 
     // Create the main window.
     debug("Creating window");
@@ -277,8 +293,11 @@ void init() {
     // Set the heading.
     heading = 0.0f;
 
+    // Create list to keep track of visited cells
+    visited_cells = make_list();
+
     // Set the lights.
-    set_lights();
+    set_lights(far_light);
 }
 
 /**
@@ -425,10 +444,10 @@ void set_projection_viewport() {
  *  just specify the light position in the camera frame and make sure
  *  to set its position while the camera transformation is the identity!
  */
-void set_lights() {
+void set_lights(light_t* light_source) {
     debug("set_lights()");
 
-    light_t* light = &far_light;
+    light_t* light = &light_source;
     glLightfv(GL_LIGHT0, GL_DIFFUSE, light->color);
     glLightfv(GL_LIGHT0, GL_AMBIENT, BLACK);
     glLightfv(GL_LIGHT0, GL_SPECULAR, light->color);
@@ -460,11 +479,11 @@ void handle_resize(int width, int height) {
  * + look_at_*, NOT simply look_at_*.
  */
 void set_look_at() {
-    debug("look_at()");
+    //debug("look_at()");
     look_at_x = sin((double) (heading*M_PI/180.0f) );
     look_at_y = cos((double) (heading*M_PI/180.0f) );
     look_at_z = LOOK_AT_HEIGHT_OFFSET;
-    debug("look_at_*) = (%f, %f, %f)", look_at_x, look_at_y, look_at_z);
+    debug("look_at = (%f, %f, %f)", look_at_x, look_at_y, look_at_z);
 }
 
 /**
@@ -478,36 +497,86 @@ void set_look_at() {
  * Prerequisite: POS_DIST_INCR is less than width of walls.
  */
 int move(float new_x, float new_y) {
-    debug("move x=%f, y=%f", new_x, new_y);
+    debug("move(x=%f, y=%f)", new_x, new_y);
     // Check if new position will be inside a wall. Assuming POS_DIST_INCR is
     // smaller than width of walls.
 
-    // Get cell that new position is in from maze.
-    cell_t* cell = get_cell(maze, (int) new_y, (int) new_x);
+    int new_x_floor = (int) new_x;
+    int new_y_floor = (int) new_y;
+
+    // Get cell of new position, if inside maze. (Without this we could get a
+    // segfault when moving at edges of the maze with a high POS_DIST_INCR).
+    if ( (new_x_floor < 0) ||
+         (new_x_floor >= get_ncols(maze)) ||
+         (new_y_floor < 0) ||
+         (new_y_floor >= get_nrows(maze)) ) {
+        debug("Segfault protection prevented a move");
+        return -1;
+    }
+    cell_t* cell = get_cell(maze, new_y_floor, new_x_floor);
 
     // Get decimal of position; if it is near the edge of the cell, see if
     // there is a wall on that direction.
-    float dec_x = (new_x - (int) new_x);
-    float dec_y = (new_y - (int) new_y);
-    debug("dec_x = %f, dec_y = %f", dec_x, dec_y);
+    float dec_x = (new_x - new_x_floor);
+    float dec_y = (new_y - new_y_floor);
     
-    // Walls go into cells canonical 0.25 times WALL_WIDTH_SCALE factor on each
+    // Walls go into cells (0.25 * WALL_WIDTH_SCALE) factor on each
     // side. So on one side of cell it's half that.
     float wall_width = (WALL_WIDTH_SCALE*0.25f)/2.0f;
 
     // If dec_x or dec_y are within the top or bottom range of wall_width, then
     // the position is inside a wall.
+    
+    // TODO: cleanup and test corners more.
+    if (dec_x <= wall_width) {
+        debug("west");
+        if (has_wall(maze, cell, WEST)) {
+            debug("not moving");
+            return -1;
+        }
+    } else if (dec_x >= MAZE_CELL_LENGTH - wall_width) {
+        debug("east");
+        if (has_wall(maze, cell, EAST)) {
+            debug("not moving");
+            return -1;
+        }
+    } else if (dec_y <= wall_width) {
+        debug("south");
+        if (has_wall(maze, cell, SOUTH)) {
+            debug("not moving");
+            return -1;
+        }
+    } else if (dec_y >= MAZE_CELL_LENGTH - wall_width) {
+        debug("north");
+        if (has_wall(maze, cell, NORTH)) {
+            debug("not moving");
+            return -1;
+        }
+    }
+    // No walls were encountered, move.
+    debug("moving");
+    pos_x = new_x;
+    pos_y = new_y;
+    add_visited_cell(cell);
 
-    // TODO: Allow moving if there isn't a wall.
-    if ((dec_x <= wall_width) ||
-        (dec_x >= MAZE_CELL_LENGTH - wall_width) ||
-        (dec_y <= wall_width) ||
-        (dec_y >= MAZE_CELL_LENGTH - wall_width)) {
-        return -1;
-    } else {
-        pos_x = new_x;
-        pos_y = new_y;
-        return 0;
+    // Check if "player" has reached end cell. If so, change lights & display
+    // text.
+    if ((maze_end->c  == (int) pos_x) && (maze_end->r == (int) pos_y)) {
+        set_lights(&red_light);
+        end_reached = true;
+        glClearColor(0.3f, 0.3f, 0.3f, 0.0f);
+    }
+    return 0;
+}
+
+/**
+ * Add a cell to the list of visited cells if it does not already exist there.
+ * @param cell - the cell to add to the list of visited cells visited_cells.
+ */
+void add_visited_cell(cell_t* cell) {
+    // Add cell if not in list.
+    if (!lst_contains(visited_cells, cell, cell_cmp)) {
+        lst_add(visited_cells, cell);
     }
 }
 
@@ -570,9 +639,10 @@ void draw_square(material_t material) {
  * the parameters.
  * @param row - the row of the maze cell to place the marker.
  * @param col - the column of the maze cell to place the marker.
+ * @param scale - the value by which to scale the 
  * @param material - the material of the square.
  */
-void draw_marker(int row, int col, material_t material) {
+void draw_marker(int row, int col, float scale, material_t material) {
     // Make sure we're talking about the m-v xfrm stack.
     glMatrixMode(GL_MODELVIEW);
 
@@ -581,7 +651,7 @@ void draw_marker(int row, int col, material_t material) {
 
     // Define model transform.
     glTranslatef(col + 0.5f, row + 0.5f, 0.0f);
-    glScalef(0.25f, 0.25, 1.0f);
+    glScalef(scale, scale, 1.0f);
 
     // Draw the square.
     draw_square(material);
@@ -716,10 +786,20 @@ void draw_maze() {
     int maze_width = get_ncols(maze);
     int maze_height = get_nrows(maze);
 
-    // Draw squares on start and end cell
-    draw_marker(maze_start->r, maze_start->c, green_plastic);
-    draw_marker(maze_end->r, maze_end->c, red_plastic);
+    // Draw breadcrumbs for all cells in visited_cells.
+    list356_itr_t* itr = lst_iterator(visited_cells);
+    while (lst_has_next(itr)) {
+        cell_t* cell = lst_next(itr);
+        draw_marker(cell->r, cell->c, 0.15f, blue_plastic);
+    }
 
+
+    // Draw squares on start cell, end cell, current cell.
+    draw_marker(maze_start->r, maze_start->c, 0.25f, green_plastic);
+    draw_marker(maze_end->r, maze_end->c, 0.25f, red_plastic);
+    draw_marker((int) pos_y, (int) pos_x, 0.25f, t_plastic);
+
+    
     // Draw the walls.  First draw the east and south exterior walls, then
     // draw any north or west walls of each cell.
 
@@ -753,9 +833,9 @@ void draw_maze() {
 /** Draw a string on the screen.  The string will be drawn in the current
  *  color and at the current raster position.
  */
-void draw_string(char* s) {
+void draw_string(char* s, void *font) {
     for (char *c=s; *c!='\0'; ++c) {
-        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_10, *c);
+        glutBitmapCharacter(font, *c);
     }
 }
 
@@ -767,13 +847,37 @@ void print_position() {
     glWindowPos2s(10, 30);
     char* s;
     asprintf(&s, "Camera position = (%f, %f, %f)", pos_x, pos_y, pos_z);
-    draw_string(s);
+    draw_string(s, GLUT_BITMAP_TIMES_ROMAN_10);
     free(s);
 
     glWindowPos2s(10, 10);
     asprintf(&s, "Heading = %f; Heading (rads) = %f", heading, heading*M_PI/180.0f);
-    draw_string(s);
+    draw_string(s, GLUT_BITMAP_TIMES_ROMAN_10);
     free(s);
+
+
+
+    // If reached end cell, inform "player"
+    if (end_reached) {
+        glWindowPos2s(win_width/2 - 100, win_height - 100);
+        asprintf(&s, "Congratulations!");
+        draw_string(s, GLUT_BITMAP_TIMES_ROMAN_24);
+        free(s);
+        glWindowPos2s(win_width/2 - 170, win_height - 130);
+        asprintf(&s, "You've have reached the end cell.");
+        draw_string(s, GLUT_BITMAP_TIMES_ROMAN_24);
+        free(s);
+    }
+    
+    // If we just hit a wall, inform "player"
+    if (hit_wall) {
+        glColor3f(1.0f, 0.0f, 0.0f);
+        glWindowPos2s(win_width/2 - 220, win_height - 70);
+        asprintf(&s, "You can't move. There's a wall in the way!");
+        draw_string(s, GLUT_BITMAP_TIMES_ROMAN_24);
+        free(s);
+        hit_wall = false;
+    }
 }
 
 /** Handle a display request by clearing the screen, drawing the axes
@@ -858,34 +962,38 @@ void handle_key(unsigned char key, int x, int y) {
  *  @param y the mouse y-position when <code>key</code> was pressed.
  */
 void handle_special_key(int key, int x, int y) {
-    switch (key) {
-        case GLUT_KEY_LEFT:
-            heading -= HEADING_INCR;
-            if (heading < 0.0f) heading += 360.0f;
-            debug("GLUT_KEY_LEFT: heading = %f", heading);
-            break;
-        case GLUT_KEY_RIGHT:
-            debug("GLUT_KEY_RIGHT: heading = %f", heading);
-            heading += HEADING_INCR;
-            if (heading >= 360.0f) heading -= 360.0f;
-            break;
-        case GLUT_KEY_UP:
-            if (move((pos_x + POS_DIST_INCR*look_at_x), (pos_y + POS_DIST_INCR*look_at_y)) == -1) {
-                debug("Can't move, wall in the way");
-            }
-            debug("GLUT_KEY_UP: pos_x = %f, pos_y = %f", pos_x, pos_y);
-            break;
-        case GLUT_KEY_DOWN:
-            if (move((pos_x - POS_DIST_INCR*look_at_x), (pos_y - POS_DIST_INCR*look_at_y)) == -1) {
-                debug("Can't move, wall in the way");
-            }
-            debug("GLUT_KEY_DOWN: pos_x = %f, pos_y = %f", pos_x, pos_y);
-            break;
-        default:
-            break;
+    // Disable movement during bird's eye view.
+    if (bird_eye_state == DOWN) {
+        switch (key) {
+            case GLUT_KEY_LEFT:
+                heading -= HEADING_INCR;
+                if (heading < 0.0f) heading += 360.0f;
+                debug("GLUT_KEY_LEFT: heading = %f", heading);
+                break;
+            case GLUT_KEY_RIGHT:
+                debug("GLUT_KEY_RIGHT: heading = %f", heading);
+                heading += HEADING_INCR;
+                if (heading >= 360.0f) heading -= 360.0f;
+                break;
+            case GLUT_KEY_UP:
+                if (move((pos_x + POS_DIST_INCR*look_at_x), (pos_y + POS_DIST_INCR*look_at_y)) == -1) {
+                    hit_wall = true;
+                    debug("Can't move, wall in the way");
+                }
+                debug("GLUT_KEY_UP: pos_x = %f, pos_y = %f", pos_x, pos_y);
+                break;
+            case GLUT_KEY_DOWN:
+                if (move((pos_x - POS_DIST_INCR*look_at_x), (pos_y - POS_DIST_INCR*look_at_y)) == -1) {
+                    hit_wall = true;
+                    debug("Can't move, wall in the way");
+                }
+                debug("GLUT_KEY_DOWN: pos_x = %f, pos_y = %f", pos_x, pos_y);
+                break;
+            default:
+                break;
+        }
+        set_look_at();
+        set_camera();
+        glutPostRedisplay();
     }
-    set_look_at();
-    set_camera();
-    glutPostRedisplay();
-
 }
