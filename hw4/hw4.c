@@ -84,7 +84,7 @@ float heading;
 #define ANIMATE_DURATION 300000000
 
 // Height above maze in bird eye view.
-#define BIRD_EYE_HEIGHT 8
+#define BIRD_EYE_HEIGHT 10
 
 // Height above maze in normal view.
 #define EYE_HEIGHT 0.75
@@ -343,10 +343,10 @@ void init_gl() {
     debug("init_gl");
     // GL initialization.
     glEnable(GL_DEPTH_TEST);
-    // glEnable(GL_CULL_FACE);
-    // glCullFace(GL_BACK);
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
+
+    // For scaling corners by decimals GL_NORMALIZE must be on.
     glEnable(GL_NORMALIZE);
     glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 1);
     
@@ -393,10 +393,8 @@ void set_bird_eye() {
         return;
     }
     else {
-        // Set the model-view (i.e., camera) transform.
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
-        // TODO, do this manually instead of with gluLookAt
 
         float height;
         if (bird_eye_state == UPWARDS) {
@@ -444,12 +442,105 @@ void set_camera() {
     // Set the model-view (i.e., camera) transform.
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    //TODO, do this manually instead of with gluLookAt
+    
+    // Use notation from OpenGL docs:
+    // http://www.opengl.org/sdk/docs/man/xhtml/gluLookAt.xml
+    vector3_t eye = {pos_x, pos_y, pos_z};
+    vector3_t center = {pos_x + look_at_x, pos_y + look_at_y, pos_z + look_at_z};
+    vector3_t up = {up_dir.x, up_dir.y, up_dir.z};
 
-    gluLookAt(pos_x, pos_y, pos_z,
-            pos_x + look_at_x, pos_y + look_at_y, pos_z + look_at_z,
-            up_dir.x, up_dir.y, up_dir.z);
-}
+    vector3_t f = {center.x - eye.x, center.y - eye.y, center.z - eye.z};
+    normalize(&f);
+
+    normalize(&up);
+
+    vector3_t s;
+    cross(&f, &up, &s);
+
+    vector3_t u;
+    cross(&s, &f, &u);
+
+    float M[16];
+    M[0] = s.x; M[4] = s.y; M[8] = s.z; M[12] = 0.0f;
+    M[1] = u.x; M[5] = u.y; M[9] = u.z; M[13] = 0.0f;
+    M[2] = -f.x; M[6] = -f.y; M[10] = -f.z; M[14] = 0.0f;
+    M[3] = 0.0f; M[7] = 0.0f; M[11] = 0.0f; M[15] = 1.0f;
+
+    glMultMatrixf(M);
+    glTranslated(-eye.x, -eye.y, -eye.z);
+
+    /*
+    // Notation from glutLookAt
+    // f - gaze direcetion
+    // w = negative g
+    // u = same plane as g and t (w x t)
+    // v = w x u
+    //
+    // w
+    vector3_t eye = {pos_x, pos_y, pos_z};
+    vector3_t center = {pos_x + look_at_x, pos_y + look_at_y, pos_z + look_at_z};
+    vector3_t up = {up_dir.x, up_dir.y, up_dir.z};
+
+    vector3_t F = {center.x - eye.x, center.y - eye.y, center.z - eye.z};
+    normalize(&F);
+    debug("f = (%f, %f, %f)", F.x, F.y, F.z);
+    
+    // up
+    normalize(&up);
+    debug("up = (%f, %f, %f)", up.x, up.y, up.z);
+
+    // s
+    vector3_t s;
+    cross(&F, &up, &s);
+    debug("s = (%f, %f, %f)", s.x, s.y, s.z);
+    
+    // u
+    vector3_t u;
+    cross(&s, &F, &u);
+    debug("u = (%f, %f, %f)", u.x, u.y, u.z);
+
+    //float* m = malloc(sizeof(float)*16);
+    float m[16];
+    m[0] = s.x;
+    m[1] = s.y;
+    m[2] = s.z;
+    m[3] = 0.0f;
+    m[4] = u.x;
+    m[5] = u.y;
+    m[6] = u.z;
+    m[7] = 0.0f;
+    m[8] = -F.x;
+    m[9] = -F.y;
+    m[10] = -F.z;
+    m[11] = 0.0f;
+    m[12] = 0.0f;
+    m[13] = 0.0f;
+    m[14] = 0.0f;
+    m[15] = 1.0f;
+
+    glMultMatrixf(m);
+
+    float M[16];
+    m[0] = 1.0f;
+    m[1] = 0.0f;
+    m[2] = 0.0f;
+    m[3] = -eye.x;
+    m[4] = 0.0f;
+    m[5] = 1.0f;
+    m[6] = 0.0f;
+    m[7] = -eye.y;
+    m[8] = 0.0f;
+    m[9] = 0.0f;
+    m[10] = 1.0f;
+    m[11] = -eye.z;
+    m[12] = 0.0f;
+    m[13] = 0.0f;
+    m[14] = 0.0f;
+    m[15] = 1.0f;
+
+    glMultMatrixf(M);
+    */
+ }
 
 /** Set the projection and viewport transformations.  We use perspective
  *  projection and always match the aspect ratio of the screen window
