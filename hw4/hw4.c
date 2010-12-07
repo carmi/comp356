@@ -27,6 +27,71 @@
 #include "debug.h"
 #include "maze.h"
 
+
+// Materials and lights.  Note that colors are RGBA colors.  OpenGL lights
+// have diffuse, specular, and ambient components; we'll default to setting
+// the first two equal to each other and the OpenGL default for ambient
+// (black).  And the position is in homogeneous coordinates, so a w-value
+// of 0 means "infinitely far away."
+typedef struct _material_t {
+    GLfloat ambient[4];
+    GLfloat diffuse[4];
+    GLfloat specular[4];
+    GLfloat phong_exp;
+} material_t;
+
+typedef struct _light_t {
+    GLfloat position[4];
+    GLfloat color[4];
+} light_t;
+
+GLfloat BLACK[4] = {0.0, 0.0, 0.0, 1.0};
+
+light_t far_light = {
+    {20.0, 10.0, 0.0, 1.0},
+    {0.75, 0.75, 0.75, 1.0}
+};
+
+light_t red_light = {
+    {20.0, 10.0, 0.0, 1.0},
+    {0.9, 0.25, 0.25, 1.0}
+};
+
+material_t gold = {
+    {.10f, .084f, 0.0f, 1.0f},
+    {1.0f, .84f, 0.0f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f},
+    1000.0f
+};
+
+material_t red_plastic = {
+    {1.0f, 0.0f, 0.0f, 1.0f},
+    {1.0f, 0.0f, 0.0f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f},
+    1000.0f
+};
+
+material_t blue_plastic = {
+    {0.0f, 0.0f, 1.0f, 1.0f},
+    {0.0f, 0.0f, 1.0f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f},
+    1000.0f
+};
+
+material_t black_plastic = {
+    {0.0f, 0.0f, 0.0f, 1.0f},
+    {0.0f, 0.0f, 0.0f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f},
+    1000.0f
+};
+
+material_t green_plastic = {
+    {0.0f, 0.8f, 0.0f, 1.0f},
+    {0.0f, 0.8f, 0.0f, 1.0f},
+    {1.0f, 1.0f, 1.0f, 1.0f},
+    1000.0f
+};
+
 // Define Window Defaults.
 #define DEFAULT_WINDOW_WIDTH 800
 #define DEFAULT_WINDOW_HEIGHT 600
@@ -45,7 +110,7 @@ vector3_t up_dir = {0.0f, 0.0f, 1.0f};
 float view_plane_near = 0.05f;
 float view_plane_far = 40.0f;
 
-// Define width and height of maze cell
+// Define width and height of square maze cell
 #define MAZE_CELL_LENGTH 1.0f
 
 // The maze itself with beginning and end cells.
@@ -58,7 +123,7 @@ cell_t* maze_end;
 float pos_x, pos_y, pos_z;
 
 // Define the offset of height that player should look at. 0 is straight
-// forwards, negative values are looking down at the floor.
+// forwards, negative values are looking down towards the floor.
 #define LOOK_AT_HEIGHT_OFFSET -0.10
 
 // The look_at vector, the offset from pos_* to where the "player" is looking.
@@ -131,100 +196,10 @@ enum corner_dir {SOUTHWEST, SOUTHEAST, NORTHEAST, NORTHWEST};
 // above one another.
 #define MARKER_HEIGHT_FACTOR 50.0f
 
-// Materials and lights.  Note that colors are RGBA colors.  OpenGL lights
-// have diffuse, specular, and ambient components; we'll default to setting
-// the first two equal to each other and the OpenGL default for ambient
-// (black).  And the position is in homogeneous coordinates, so a w-value
-// of 0 means "infinitely far away."
-typedef struct _material_t {
-    GLfloat ambient[4];
-    GLfloat diffuse[4];
-    GLfloat specular[4];
-    GLfloat phong_exp;
-} material_t;
-
-typedef struct _light_t {
-    GLfloat position[4];
-    GLfloat color[4];
-} light_t;
-
-GLfloat BLACK[4] = {0.0, 0.0, 0.0, 1.0};
-
-light_t far_light = {
-    {20.0, 10.0, 0.0, 1.0},
-    {0.75, 0.75, 0.75, 1.0}
-};
-
-light_t red_light = {
-    {20.0, 10.0, 0.0, 1.0},
-    {0.9, 0.25, 0.25, 1.0}
-};
-
-material_t gold = {
-    {.10f, .084f, 0.0f, 1.0f},
-    {1.0f, .84f, 0.0f, 1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f},
-    1000.0f
-};
-
-material_t red_plastic = {
-    {1.0f, 0.0f, 0.0f, 1.0f},
-    {1.0f, 0.0f, 0.0f, 1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f},
-    1000.0f
-};
-
-material_t green_plastic = {
-    {0.0f, 1.0f, 0.0f, 1.0f},
-    {0.0f, 1.0f, 0.0f, 1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f},
-    1000.0f
-};
-
-material_t blue_plastic = {
-    {0.0f, 0.0f, 1.0f, 1.0f},
-    {0.0f, 0.0f, 1.0f, 1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f},
-    1000.0f
-};
-
-material_t t_plastic = {
-    {0.75f, 0.45f, 0.45f, 1.0f},
-    {0.75f, 0.45f, 0.45f, 1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f},
-    1000.0f
-};
-
-material_t orange = {
-    {1.0f, 0.45f, 0.0f, 1.0f},
-    {1.0f, 0.45f, 0.0f, 1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f},
-    1000.0f
-};
-
-material_t green = {
-    {0.0f, 0.8f, 0.0f, 1.0f},
-    {0.0f, 0.8f, 0.0f, 1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f},
-    1000.0f
-};
-
-material_t blue = {
-    {0.07f, 0.25f, 0.67f, 1.0f},
-    {0.07f, 0.25f, 0.67f, 1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f},
-    1000.0f
-};
-
-material_t teal = {
-    {0.0f, 0.6f, 0.6f, 1.0f},
-    {0.0f, 0.6f, 0.6f, 1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f},
-    1000.0f
-};
+// Show axis if testing.
+#define TESTING false
 
 // Function Declarations
-
 // Callbacks.
 void handle_display(void);
 void handle_resize(int, int);
@@ -236,6 +211,7 @@ void init();
 void init_maze(int maze_height, int maze_width);
 int move(float new_x, float new_y);
 void add_visited_cell(cell_t* cell);
+void print_info();
 
 // GL functions.
 void init_gl();
@@ -276,7 +252,6 @@ int main(int argc, char **argv) {
     init_maze(maze_height, maze_width);
 
     // Initialize application state
-
     init();
 
     // Initialize GL.
@@ -323,7 +298,7 @@ void init() {
     bird_eye_depth = ANIMATE_STEPS;
     bird_eye_state = UPWARDS;
 
-    // Calculate once the height step for bird eye animation.
+    // Calculate the height step for bird eye animation once.
     bird_eye_height_step = (float) (BIRD_EYE_HEIGHT/ANIMATE_STEPS);
 
     // Set the heading.
@@ -333,11 +308,12 @@ void init() {
     visited_cells = make_list();
 
     // Set the lights.
-    set_lights(far_light);
+    set_lights(&far_light);
 }
 
 /**
- * Initialize OpenGL. Set our world frame to be the width and height of the maze.
+ * Initialize OpenGL. Set our world frame to be the width and height of the
+ * maze.
  */
 void init_gl() {
     debug("init_gl");
@@ -413,12 +389,6 @@ void set_bird_eye() {
         // maze.
         point3_t bird_look_at = {look_at_x, look_at_y, 0.0f};
 
-        debug("bird_eye vector = (%f, %f, %f)", bird_eye.x, bird_eye.y,
-                                bird_eye.z);
-        debug("Look at vector = (%f, %f, %f)", pos_x, pos_y, pos_z);
-        debug("up vector(look_at_*) = (%f, %f, %f)", bird_look_at.x,
-                                bird_look_at.y, bird_look_at.z);
-
         // Up vector is same as look_at_* offset. Thus bird_eye view "up" is
         // "forwards" in normal maze.
         gluLookAt(bird_eye.x, bird_eye.y, bird_eye.z,
@@ -446,7 +416,8 @@ void set_camera() {
     // Use notation from OpenGL docs:
     // http://www.opengl.org/sdk/docs/man/xhtml/gluLookAt.xml
     vector3_t eye = {pos_x, pos_y, pos_z};
-    vector3_t center = {pos_x + look_at_x, pos_y + look_at_y, pos_z + look_at_z};
+    vector3_t center = {pos_x + look_at_x, pos_y + look_at_y, pos_z +
+        look_at_z};
     vector3_t up = {up_dir.x, up_dir.y, up_dir.z};
 
     vector3_t f = {center.x - eye.x, center.y - eye.y, center.z - eye.z};
@@ -454,92 +425,23 @@ void set_camera() {
 
     normalize(&up);
 
+    // Let s = f X up
     vector3_t s;
     cross(&f, &up, &s);
 
+    // Let u = s X f
     vector3_t u;
     cross(&s, &f, &u);
 
+    // Construct camera transformation matrix and push on stack.
     float M[16];
-    M[0] = s.x; M[4] = s.y; M[8] = s.z; M[12] = 0.0f;
-    M[1] = u.x; M[5] = u.y; M[9] = u.z; M[13] = 0.0f;
-    M[2] = -f.x; M[6] = -f.y; M[10] = -f.z; M[14] = 0.0f;
-    M[3] = 0.0f; M[7] = 0.0f; M[11] = 0.0f; M[15] = 1.0f;
+    M[0] = s.x;     M[4] = s.y;     M[8] = s.z;     M[12] = 0.0f;
+    M[1] = u.x;     M[5] = u.y;     M[9] = u.z;     M[13] = 0.0f;
+    M[2] = -f.x;    M[6] = -f.y;    M[10] = -f.z;   M[14] = 0.0f;
+    M[3] = 0.0f;    M[7] = 0.0f;    M[11] = 0.0f;   M[15] = 1.0f;
 
     glMultMatrixf(M);
     glTranslated(-eye.x, -eye.y, -eye.z);
-
-    /*
-    // Notation from glutLookAt
-    // f - gaze direcetion
-    // w = negative g
-    // u = same plane as g and t (w x t)
-    // v = w x u
-    //
-    // w
-    vector3_t eye = {pos_x, pos_y, pos_z};
-    vector3_t center = {pos_x + look_at_x, pos_y + look_at_y, pos_z + look_at_z};
-    vector3_t up = {up_dir.x, up_dir.y, up_dir.z};
-
-    vector3_t F = {center.x - eye.x, center.y - eye.y, center.z - eye.z};
-    normalize(&F);
-    debug("f = (%f, %f, %f)", F.x, F.y, F.z);
-    
-    // up
-    normalize(&up);
-    debug("up = (%f, %f, %f)", up.x, up.y, up.z);
-
-    // s
-    vector3_t s;
-    cross(&F, &up, &s);
-    debug("s = (%f, %f, %f)", s.x, s.y, s.z);
-    
-    // u
-    vector3_t u;
-    cross(&s, &F, &u);
-    debug("u = (%f, %f, %f)", u.x, u.y, u.z);
-
-    //float* m = malloc(sizeof(float)*16);
-    float m[16];
-    m[0] = s.x;
-    m[1] = s.y;
-    m[2] = s.z;
-    m[3] = 0.0f;
-    m[4] = u.x;
-    m[5] = u.y;
-    m[6] = u.z;
-    m[7] = 0.0f;
-    m[8] = -F.x;
-    m[9] = -F.y;
-    m[10] = -F.z;
-    m[11] = 0.0f;
-    m[12] = 0.0f;
-    m[13] = 0.0f;
-    m[14] = 0.0f;
-    m[15] = 1.0f;
-
-    glMultMatrixf(m);
-
-    float M[16];
-    m[0] = 1.0f;
-    m[1] = 0.0f;
-    m[2] = 0.0f;
-    m[3] = -eye.x;
-    m[4] = 0.0f;
-    m[5] = 1.0f;
-    m[6] = 0.0f;
-    m[7] = -eye.y;
-    m[8] = 0.0f;
-    m[9] = 0.0f;
-    m[10] = 1.0f;
-    m[11] = -eye.z;
-    m[12] = 0.0f;
-    m[13] = 0.0f;
-    m[14] = 0.0f;
-    m[15] = 1.0f;
-
-    glMultMatrixf(M);
-    */
  }
 
 /** Set the projection and viewport transformations.  We use perspective
@@ -572,10 +474,9 @@ void set_projection_viewport() {
  *  just specify the light position in the camera frame and make sure
  *  to set its position while the camera transformation is the identity!
  */
-void set_lights(light_t* light_source) {
+void set_lights(light_t* light) {
     debug("set_lights()");
 
-    light_t* light = &light_source;
     glLightfv(GL_LIGHT0, GL_DIFFUSE, light->color);
     glLightfv(GL_LIGHT0, GL_AMBIENT, BLACK);
     glLightfv(GL_LIGHT0, GL_SPECULAR, light->color);
@@ -611,7 +512,6 @@ void set_look_at() {
     look_at_x = sin((double) (heading*M_PI/180.0f) );
     look_at_y = cos((double) (heading*M_PI/180.0f) );
     look_at_z = LOOK_AT_HEIGHT_OFFSET;
-    debug("look_at = (%f, %f, %f)", look_at_x, look_at_y, look_at_z);
 }
 
 /**
@@ -682,7 +582,6 @@ int move(float new_x, float new_y) {
         }
     }
     // No walls were encountered, move.
-    debug("moving");
     pos_x = new_x;
     pos_y = new_y;
     add_visited_cell(cell);
@@ -692,6 +591,7 @@ int move(float new_x, float new_y) {
     if ((maze_end->c  == (int) pos_x) && (maze_end->r == (int) pos_y)) {
         set_lights(&red_light);
         end_reached = true;
+        // Change the background color for visual notification.
         glClearColor(0.3f, 0.3f, 0.3f, 0.0f);
     }
     return 0;
@@ -708,8 +608,8 @@ void add_visited_cell(cell_t* cell) {
     }
 }
 
-/** Draw the coordinate axes as line segments from -100 to +100 along
- *  the corresponding axis.
+/** Draw the coordinate axes as line segments from 0 to +100 along
+ *  the corresponding axis and draw outline of the maze.
  */
 void draw_axes() {
     // Disable lighting so that we can set the color with glColor*.
@@ -808,7 +708,6 @@ void draw_marker(int row, int col, float scale, material_t material) {
 void draw_wall(float row, float col, unsigned char direction) {
     //debug("draw_wall()");
 
-    // TODO: should this possibly be further up the call sequence?
     // Make sure we're talking about the m-v xfrm stack.
     glMatrixMode(GL_MODELVIEW);
 
@@ -822,19 +721,15 @@ void draw_wall(float row, float col, unsigned char direction) {
 
     switch (direction) {
         case NORTH:
-            //debug("NORTH");
             glTranslatef(0.0f, 1.0f, 0.0f);
             break;
         case EAST:
-            //debug("EAST");
             glTranslatef(0.5f, 0.5f, 0.0f);
             glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
             break;
         case SOUTH:
-            //debug("SOUTH");
             break;
         case WEST:
-            //debug("WEST");
             glTranslatef(-0.5f, 0.5f, 0.0f);
             glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
             break;
@@ -847,7 +742,7 @@ void draw_wall(float row, float col, unsigned char direction) {
     glScalef(WALL_LENGTH_SCALE, WALL_WIDTH_SCALE, WALL_HEIGHT_SCALE);
 
     // Draw the wall.
-    draw_rect(orange);
+    draw_rect(gold);
 
     // Undo the model xfrm.
     glPopMatrix();
@@ -903,7 +798,7 @@ void draw_corner(float row, float col, int corner_dir) {
     glScalef(size, MAZE_CELL_LENGTH, MAZE_CELL_LENGTH);
 
     // Draw the wall.
-    draw_rect(orange);
+    draw_rect(gold);
 
     // Undo the model xfrm.
     glPopMatrix();
@@ -988,7 +883,7 @@ void draw_maze() {
     // Draw squares on start cell, end cell, and current cell.
     draw_marker(maze_start->r, maze_start->c, 0.25f, green_plastic);
     draw_marker(maze_end->r, maze_end->c, 0.25f, red_plastic);
-    draw_marker((int) pos_y, (int) pos_x, 0.35f, t_plastic);
+    draw_marker((int) pos_y, (int) pos_x, 0.35f, black_plastic);
 
     
     // Draw the walls.  First draw the east and south exterior walls, then
@@ -1040,7 +935,7 @@ void draw_string(char* s, void *font) {
 
 /** Print the position (distance, theta, and phi) on the screen.
  */
-void print_position() {
+void print_info() {
     glColor3f(0.0f, 0.0f, 0.0f);
 
     glWindowPos2s(10, 30);
@@ -1050,11 +945,9 @@ void print_position() {
     free(s);
 
     glWindowPos2s(10, 10);
-    asprintf(&s, "Heading = %f; Heading (rads) = %f", heading, heading*M_PI/180.0f);
+    asprintf(&s, "Heading = %f", heading);
     draw_string(s, GLUT_BITMAP_TIMES_ROMAN_10);
     free(s);
-
-
 
     // If reached end cell, inform "player"
     if (end_reached) {
@@ -1079,8 +972,8 @@ void print_position() {
     }
 }
 
-/** Handle a display request by clearing the screen, drawing the axes
- *  and cube, and printing the viewpoint position.
+/** Handle a display request by clearing the screen, drawing the maze, and
+ * printing information.
  */
 void handle_display() {
     //debug("handle_display()");
@@ -1094,16 +987,10 @@ void handle_display() {
     // place in the world.  See set_lights() for more info.
     glLightfv(GL_LIGHT0, GL_POSITION, far_light.position);
 
-    draw_axes();
-    
-    //draw_rect(teal);
-    //draw_square();
+    if (TESTING) draw_axes();
     draw_maze();
-
-    print_position();
-
+    print_info();
     glFlush();
-    
 }
 
 /** Handle keyboard events:
@@ -1129,6 +1016,7 @@ void handle_key(unsigned char key, int x, int y) {
                 bird_eye_toggle();
             }
             break;
+        // "Easter egg" change height key mapping
         case '+':
             debug("handle_key() - increase eye dist.");
             pos_z += POS_DIST_INCR;
@@ -1167,22 +1055,21 @@ void handle_special_key(int key, int x, int y) {
             case GLUT_KEY_LEFT:
                 heading -= HEADING_INCR;
                 if (heading < 0.0f) heading += 360.0f;
-                debug("GLUT_KEY_LEFT: heading = %f", heading);
                 break;
             case GLUT_KEY_RIGHT:
-                debug("GLUT_KEY_RIGHT: heading = %f", heading);
                 heading += HEADING_INCR;
                 if (heading >= 360.0f) heading -= 360.0f;
                 break;
             case GLUT_KEY_UP:
-                if (move((pos_x + POS_DIST_INCR*look_at_x), (pos_y + POS_DIST_INCR*look_at_y)) == -1) {
+                if (move((pos_x + POS_DIST_INCR*look_at_x),
+                            (pos_y + POS_DIST_INCR*look_at_y)) == -1) {
                     hit_wall = true;
                     debug("Can't move, wall in the way");
                 }
-                debug("GLUT_KEY_UP: pos_x = %f, pos_y = %f", pos_x, pos_y);
                 break;
             case GLUT_KEY_DOWN:
-                if (move((pos_x - POS_DIST_INCR*look_at_x), (pos_y - POS_DIST_INCR*look_at_y)) == -1) {
+                if (move((pos_x - POS_DIST_INCR*look_at_x),
+                            (pos_y - POS_DIST_INCR*look_at_y)) == -1) {
                     hit_wall = true;
                     debug("Can't move, wall in the way");
                 }

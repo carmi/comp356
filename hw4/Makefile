@@ -13,12 +13,8 @@ HW4_DEPENDENCIES=hw4.o maze.o debug.h
 
 SOLUTION_FILES=hw4.o maze.o debug.h
 
-
 hw4 : $(HW4_DEPENDENCIES)
 	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $^ $(LDFLAGS) -l356
-
-show_maze2d : show_maze2d.c maze.c
-	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) show_maze2d.c maze.c $(LDFLAGS) $(LIBS)
 
 clean :
 	rm -f *.o $(EXECUTABLES)
