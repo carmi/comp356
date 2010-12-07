@@ -553,9 +553,10 @@ int move(float new_x, float new_y) {
     float wall_width = (WALL_WIDTH_SCALE*0.25f)/2.0f;
 
     // If dec_x or dec_y are within the top or bottom range of wall_width, then
-    // the position is inside a wall.
+    // the position is inside a wall. Also prevent a move if new position is
+    // inside a corner, and all cells have walls on all corners as per Prim's
+    // algorithm.
     
-    // TODO: cleanup and test corners more.
     if (dec_x <= wall_width) {
         debug("west");
         if (has_wall(maze, cell, WEST)) {
