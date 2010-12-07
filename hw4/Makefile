@@ -11,7 +11,7 @@ LIBS=-l356
 
 HW4_DEPENDENCIES=hw4.o maze.o debug.h
 
-SOLUTION_FILES=hw4.o maze.o debug.h
+SOLUTION_FILES=hw4.c maze.c maze.h debug.h Makefile
 
 hw4 : $(HW4_DEPENDENCIES)
 	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $^ $(LDFLAGS) -l356

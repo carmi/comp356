@@ -1,6 +1,10 @@
 /** Maze solving 3D game.
- *
- *  @author Evan Carmi
+ *  @file hw4.c
+ *  Professor Danner
+ *  Computer Graphics 356
+ *  Homework #4
+ *  Evan Carmi (WesID: 807136)
+ *  ecarmi@wesleyan.edu
  */
 
 #include <assert.h>
@@ -549,8 +553,9 @@ int move(float new_x, float new_y) {
     float dec_y = (new_y - new_y_floor);
     
     // Walls go into cells (0.25 * WALL_WIDTH_SCALE) factor on each
-    // side. So on one side of cell it's half that.
-    float wall_width = (WALL_WIDTH_SCALE*0.25f)/2.0f;
+    // side. So on one side of cell it's half that. And add view_plane_near
+    // distance so the near viewing plane doesn't end up inside the wall.
+    float wall_width = (WALL_WIDTH_SCALE*0.25f)/2.0f + view_plane_near;
 
     // If dec_x or dec_y are within the top or bottom range of wall_width, then
     // the position is inside a wall. Also prevent a move if new position is
@@ -582,7 +587,16 @@ int move(float new_x, float new_y) {
             return -1;
         }
     }
-    // No walls were encountered, move.
+    // No walls were encountered, check if new position is inside a corner, if
+    // not then move.
+    if ((dec_y <= wall_width) || (dec_y >= MAZE_CELL_LENGTH - wall_width)) {
+        if ((dec_x <= wall_width) || (dec_x >= MAZE_CELL_LENGTH -wall_width)) {
+            // We are in a corner, return -1.
+            debug("Can't move into corner");
+            return -1;
+        }
+    }
+    // Now move.
     pos_x = new_x;
     pos_y = new_y;
     add_visited_cell(cell);
@@ -1012,7 +1026,8 @@ void handle_key(unsigned char key, int x, int y) {
         case ' ':
             debug("handle_key() <space> - bird's eye view %i", bird_eye_state);
             // If not currently animating, start animation.
-            if (!((bird_eye_state == UPWARDS) || (bird_eye_state == DOWNWARDS))) {
+            if (!((bird_eye_state == UPWARDS) ||
+                  (bird_eye_state == DOWNWARDS))) {
                 bird_eye_depth = ANIMATE_STEPS;
                 bird_eye_toggle();
             }
