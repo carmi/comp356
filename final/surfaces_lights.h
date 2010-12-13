@@ -21,6 +21,13 @@ list356_t* get_surfaces() ;
  */
 list356_t* get_lights() ;
 
+/** Get the ambient light color.
+ *  
+ *  @param ambient_light a structure to fill with the ambient light
+ *      color.
+ */
+void get_ambient_light(color_t* ambient_light) ;
+
 /** Get the viewing data.  Given a location for the viewpoint and look-at
  *  point and an up-direction in the world-frame, the standard 
  *  orthonormal camera frame

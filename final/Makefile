@@ -1,16 +1,23 @@
+# Professor Danner
+# Computer Graphics 356
+# Final Project
+# Evan Carmi (WesID: 807136)
+# ecarmi@wesleyan.edu
 include comp356.mk
+
+EXECUTABLES=final
 
 LIBS=-l356
 
-%.o : %.c %.h
-	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $<
+FINAL_DEPENDENCIES=final.c surface.c surfaces_lights.c debug.h
 
-hw2bp1.o : hw2bp1.c surface.h surfaces_lights.h
-	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) -c hw2bp1.c
+SOLUTION_FILES=final.c surface.h surface.c surfaces_lights.h surfaces_lights.c debug.h Makefile
 
-hw2bp1 : hw2bp1.o surface.o surfaces_lights.o 
-	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $^ $(LDFLAGS) $(LIBS)
+final : $(FINAL_DEPENDENCIES)
+	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $^ $(LDFLAGS) -l356
 
 clean :
-	rm -f *.o hw2bp1
+	rm -f *.o $(EXECUTABLES)
 
+solution : $(SOLUTION_FILES)
+	tar czvf hw4.tar.gz $(SOLUTION_FILES)
