@@ -19,36 +19,9 @@
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
-// A marginally-clever debugging function that expends to a no-op
-// when NDEBUG is defined and otherwise prints its string formatting
-// arguments to stderr.
-#ifdef NDEBUG
-#define debug(fmt, ...) 
-#define debug_c(expr, fmt, ...)
-#else
-static void debug(const char* fmt, ...) {
-    va_list argptr ;
-    va_start(argptr, fmt) ;
-
-    char* fmt_newline ;
-    asprintf(&fmt_newline, "%s\n", fmt) ;
-    vfprintf(stderr, fmt_newline, argptr) ;
-    free(fmt_newline) ;
-    fflush(stderr) ;
-}
-static void debug_c(bool expr, const char* fmt, ...) {
-    if (expr) {
-        va_list argptr ;
-        va_start(argptr, fmt) ;
-
-        char* fmt_newline ;
-        asprintf(&fmt_newline, "%s\n", fmt) ;
-        vfprintf(stderr, fmt_newline, argptr) ;
-        free(fmt_newline) ;
-        fflush(stderr) ;
-    }
-}
-#endif
+#define X_AXIS 0
+#define Y_AXIS 1
+#define Z_AXIS 2
 
 /** The type of a sphere surface.
  */
@@ -75,6 +48,15 @@ typedef struct _plane_data_t {
     point3_t a, b, c ;
     vector3_t normal ;
 } plane_data_t ;
+
+/** The type of a bbt_node surface. A bbox_node surface is specified by left
+ * and right child bbt_node surfaces.
+ */
+typedef struct _bbt_node_data_t {
+    surface_t* left;
+    surface_t* right;
+} bbt_node_data;
+
 
 /** Set standard surface data for a surface.  This function sets
  *  <code>refl_color</code> and <code>atten</code> to <code>NULL</code>
@@ -159,6 +141,10 @@ static bool sfc_hit_plane(surface_t* sfc, ray3_t* ray, float t0,
  */
 static bool hit_bbox(bbox_t* bbox, ray3_t* ray, float t0, float t1) ;
 
+// BBT Node functions declarations.
+surface_t* make_bbt_node_helper(list356_t* surfaces, int axis);
+float mid_point(bbox_t* bbox, int axis);
+
 //
 // UTILITY FUNCTIONS.
 //
@@ -187,6 +173,34 @@ static float min4(float v, float a, float b, float c) {
  */
 static float max4(float v, float a, float b, float c) {
     return max(v, max(a, max(b, c))) ;
+}
+/**
+ * Calculate and return the center of a bbox along a given axis.
+ *
+ *
+ * @param box the bbox of which to calculate center value.
+ * @param axis the axis along which to calculate center.
+ */
+float mid_point(bbox_t* bbox, int axis) {
+    float a, b;
+    switch (axis) {
+        case (X_AXIS):
+            a = bbox->left;
+            b = bbox->right;
+            break;
+        case (Y_AXIS):
+            a = bbox->bottom;
+            b = bbox->top;
+            break;
+        case (Z_AXIS):
+            a = bbox->near;
+            b = bbox->far;
+            break;
+        default:
+            assert(0);
+    }
+    float dist = b - a;
+    return (a + (dist)/2.0f);
 }
 
 surface_t* make_sphere(float x, float y, float z, float radius, 
@@ -461,3 +475,108 @@ static bool hit_bbox(bbox_t* bbox, ray3_t* ray, float t0, float t1) {
 
 }
 
+/** Create a bounding-box tree node from a list of surfaces.  Any
+ *  compound surface (like a BBT node) will <i>not</i> be broken into
+ *  its component surfaces.
+ *
+ *  @param surfaces a list of surfaces.  Each surface in
+ *      <code>surfaces</code> must have a non-<code>NULL</code>
+ *      bounding box and must not be transparent.
+ */
+surface_t* make_bbt_node(list356_t* surfaces) {
+    // Call the helper function along x axes.
+    return make_bbt_node_helper(surfaces, 0);
+}
+
+/**
+ * Create a bounding-box tree node from a list of surfaces. Any compound
+ * surface (like a BBT node) will <i>not</i> be broken into its component
+ * surfaces.  This is a helper function for make_bbt_node(), that incorporates
+ * the use of an axis parameter.
+ *
+ * Precondition: the list of surfaces is non-empty.
+ *
+ *  @param surfaces a list of surfaces.  Each surface in
+ *      <code>surfaces</code> must have a non-<code>NULL</code>
+ *      bounding box and must not be transparent.
+ *  @param axis the axis to divide the bounding box. The axes are defined by an
+ *      integer with x=0, y=1, z=2.
+ */
+surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
+    // Create a bounding box node that bounds everything in surfaces.
+    surface_t* node = MALLOC1(surface_t);
+
+    // Allocate bbt_node data;
+    bbt_node_data* data = MALLOC1(bbt_node_data);
+
+    // Set the bounding box of node. Find least/greatest x, y, and z edges.
+    // This will setup correct bbox regardless of the number of surfaces, so we
+    // do it first.
+    list356_itr_t* s = lst_iterator(surfaces) ;
+    bool first_sfc = true;
+    while (lst_has_next(s)) {
+        surface_t* sfc = lst_next(s) ;
+        // If first iteration, set bbox bounds to first object.
+        if (first_sfc == true) {
+            node->bbox->left= sfc->bbox->left;
+            node->bbox->right = sfc->bbox->right;
+            node->bbox->bottom = sfc->bbox->bottom;
+            node->bbox->top = sfc->bbox->top;
+            node->bbox->near = sfc->bbox->near;
+            node->bbox->far = sfc->bbox->far;
+            first_sfc = false;
+        }
+        
+        // Get min's and max'es from all surfaces in list and set bbox.
+        node->bbox->left = min(sfc->bbox->left, node->bbox->left);
+        node->bbox->right = max(sfc->bbox->right, node->bbox->right);
+        node->bbox->bottom = min(sfc->bbox->bottom, node->bbox->bottom);
+        node->bbox->top = max(sfc->bbox->top, node->bbox->top);
+        node->bbox->near = min(sfc->bbox->near, node->bbox->near);
+        node->bbox->far = min(sfc->bbox->far, node->bbox->far);
+    }
+
+    // Handles base cases length of surfaces is 1 or 2.
+    int length = lst_size(surfaces);
+
+    if (length == 1) {
+        data->left = lst_get(surfaces, 0);
+        data->right = NULL;
+    } else if (length == 2) {
+        data->left = lst_get(surfaces, 0);
+        data->right = lst_get(surfaces, 1);
+    } else {
+        // Recursive case.
+
+        // Get midpoint along axis.
+        float mid = mid_point(node->bbox, axis);
+        // TODO: jitter mid, so we don't get infinite lists.
+
+        // Iterate through surfaces again, creating two sublists
+        list356_t* left_sublist = make_list();
+        list356_t* right_sublist = make_list();
+        // Use same iterator as above, but reset it.
+        s = lst_iterator(surfaces);
+        while (lst_has_next(s)) {
+            surface_t* curr_sfc = lst_next(s);
+
+            // If center of curr_sfc.bbox <= mid place in left sublist;
+            // otherwise place in right.
+            float curr_center = mid_point(curr_sfc->bbox, axis);
+            if (curr_center <= mid) {
+                lst_add(left_sublist, curr_sfc);
+            } else {
+                lst_add(right_sublist, curr_sfc);
+            }
+        }
+
+        // Set left and right children to be bbt_node's created off
+        // left/right_sublist.
+        data->left = make_bbt_node_helper(left_sublist, ((axis + 1) % 3));
+        data->right = make_bbt_node_helper(right_sublist, ((axis + 1) % 3));
+    }
+    // Manually set data to be data of node. We don't use set_sfc_data because
+    // we want to intentionally leave colors undefined.
+    node->data = data;
+    return node;
+}
