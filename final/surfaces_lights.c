@@ -35,6 +35,7 @@ list356_t* get_surfaces() {
     list356_t* surfaces = make_list() ;
 
     // Plane at y=-1.
+    /*
     surface_t* plane = make_plane(
                 (point3_t){-40, -1, 2},
                 (point3_t){2, -1, 2},
@@ -42,6 +43,7 @@ list356_t* get_surfaces() {
                 &LIGHT_GREY, &LIGHT_GREY, &BLACK, 10.0f) ;
     plane->refl_color = &LIGHT_GREY ;
     lst_add(surfaces, plane) ;
+    */
 
     // Two walls.
     surface_t* w11 = make_triangle(

@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "debug.h"
 #include "surface.h"
 
 #define MALLOC1(t) (t *)(malloc(sizeof(t)))
@@ -503,8 +504,10 @@ surface_t* make_bbt_node(list356_t* surfaces) {
  *      integer with x=0, y=1, z=2.
  */
 surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
+    debug("make_bbt_node_helper()");
     // Create a bounding box node that bounds everything in surfaces.
     surface_t* node = MALLOC1(surface_t);
+    node->bbox = MALLOC1(bbox_t);
 
     // Allocate bbt_node data;
     bbt_node_data* data = MALLOC1(bbt_node_data);
@@ -524,6 +527,7 @@ surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
             node->bbox->top = sfc->bbox->top;
             node->bbox->near = sfc->bbox->near;
             node->bbox->far = sfc->bbox->far;
+            debug("node->bbox->far: %f", node->bbox->far);
             first_sfc = false;
         }
         
@@ -535,7 +539,7 @@ surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
         node->bbox->near = min(sfc->bbox->near, node->bbox->near);
         node->bbox->far = min(sfc->bbox->far, node->bbox->far);
     }
-
+    lst_iterator_free(s);
     // Handles base cases length of surfaces is 1 or 2.
     int length = lst_size(surfaces);
 
@@ -569,14 +573,58 @@ surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
                 lst_add(right_sublist, curr_sfc);
             }
         }
+        lst_iterator_free(s);
 
         // Set left and right children to be bbt_node's created off
         // left/right_sublist.
         data->left = make_bbt_node_helper(left_sublist, ((axis + 1) % 3));
         data->right = make_bbt_node_helper(right_sublist, ((axis + 1) % 3));
     }
-    // Manually set data to be data of node. We don't use set_sfc_data because
-    // we want to intentionally leave colors undefined.
-    node->data = data;
+    set_sfc_data(node, data, NULL,
+            NULL, NULL, NULL, 0) ;
     return node;
+}
+
+
+/**
+ * bbt_hit recursively checks if the ray hits the bbt_node tree given.
+ *
+ */
+bool hit(surface_t* node, ray3_t* ray, float t0, float t1, hit_record_t* rec) {
+    debug("hit()");
+
+    if (node->hit_fn(node, ray, t0, t1, rec)) {
+        hit_record_t lrec, rrec;
+        
+        // If node is a bbt_node surface then recursively call hit() on its
+        // children. Check if it's a bbt_node surface by comparing it's hit_fn.
+
+        
+        // Base case: if node doesn't have a bounding box.
+        if (node->bbox == NULL) {
+            return true;
+        }
+
+        // Recursive case, call hit() on left and right children.
+
+        bbt_node_data* ndata = (bbt_node_data*)(node->data);
+        surface_t* lchild = ndata->left;
+        surface_t* rchild = ndata->right;
+
+        bool left_hit, right_hit;
+        left_hit = ((lchild != NULL) && hit(lchild, ray, t0, t1,
+                    &lrec));
+        right_hit = ((rchild != NULL) && hit(rchild, ray, t0, t1,
+                    &lrec));
+        if (left_hit && right_hit) {
+            if (lrec.t < rrec.t) memcpy(&rec, &lrec, sizeof(hit_record_t));
+            else memcpy(&rec, &rrec, sizeof(hit_record_t));
+        }
+        else if (left_hit) memcpy(&rec, &lrec, sizeof(hit_record_t));
+        else if (right_hit) memcpy(&rec, &rrec, sizeof(hit_record_t));
+
+        if (left_hit || right_hit) return true;
+        else return false;
+    }
+    else return false;
 }
