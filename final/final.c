@@ -58,9 +58,6 @@ vector3_t eye_frame_u, eye_frame_v, eye_frame_w ;
 // Surface data.
 list356_t* surfaces = NULL ;
 
-// BBT_tree data.
-surface_t* bbt_root = NULL;
-
 // Light data.
 list356_t* lights = NULL ;
 color_t ambient_light = {.1f, .1f, .1f} ;
@@ -72,7 +69,6 @@ void handle_resize(int, int) ;
 // Application functions.
 void win2world(int, int, vector3_t*) ;
 void compute_eye_frame_basis() ;
-bool hit(surface_t* node, ray3_t* ray, float t0, float t1, hit_record_t* rec);
 
 // Lighting functions.
 color_t get_specular_refl(ray3_t* ray, hit_record_t* hit_rec, int depth) ;
@@ -88,7 +84,6 @@ GLfloat* fb ;
 void handle_exit() ;
 
 int main(int argc, char **argv) {
-    debug("main()");
 
     // Initialize the drawing window.
     glutInitWindowSize(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT) ;
@@ -104,10 +99,7 @@ int main(int argc, char **argv) {
     // Application initialization.
     set_view_data(&eye, &look_at, &up_dir) ;
     set_view_plane(&view_plane_dist, &view_plane_width, &view_plane_height) ;
-
-    // Make bbt_tree from surfaces.
-    surfaces = get_surfaces();
-    bbt_root = make_bbt_node(surfaces);
+    surfaces = get_surfaces() ;
     lights = get_lights() ;
     compute_eye_frame_basis() ;
 
@@ -189,12 +181,6 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
         }
     }
     lst_iterator_free(s) ;
-    
-    
-
-    // To check for hitting any surface, simply check whether we hit bbt_tree.
-    hit_something = hit(bbt_root, &ray, t0, t1, &hit_rec);
-
 
     // If we hit something, color the pixel.
     if (hit_something) {
@@ -418,4 +404,3 @@ void win2world(int x, int y, vector3_t* dir) {
         "win2world():  i, j, k = %f, %f, %f\n", dir->x, dir->y, dir->z) ;
 
 }
-
