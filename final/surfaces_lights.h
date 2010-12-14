@@ -2,10 +2,12 @@
  */
 
 #ifndef OBJECTS_LIGHTS_H
-#define OBJEcTS_LIGHTS_H
+#define OBJECTS_LIGHTS_H
 
 #include "list356.h"
 #include "geom356.h"
+
+#include "color.h"
 
 /** Get a list of surfaces.  Each element of the list will be of type
  *  <code>surface_t*</code>.

@@ -9,6 +9,7 @@
 #include <stdbool.h>
 
 #include "color.h"
+
 #include "geom356.h"
 #include "list356.h"
 
@@ -108,8 +109,11 @@ struct _surface_t {
     float           refr_index ;
 
     /** Attenuation for transparent surfaces.  This gives the attenuation
-     *  "color" for rays as they pass through transparent surfaces.  It
-     *  is ignored unless <code>refr_index != -1</code>.
+     *  "color" for rays as they pass through transparent surfaces.
+     *  Specifically, if <i>I(s)</i> is the intensity of a given color
+     *  component at distance <i>s</i>, then
+     *  <i>I(s) = I(0)e<sup>-as</sup</i>.
+     *  It is ignored unless <code>refr_index != -1</code>.
      */
     color_t*        atten ;
 } ;

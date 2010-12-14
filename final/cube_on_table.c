@@ -135,7 +135,7 @@ list356_t* get_lights() {
 }
 
 void get_ambient_light(color_t* al) {
-    al = &AMBIENT ;
+    *al = AMBIENT ;
 }
 
 void set_view_data(point3_t* eye, point3_t* look_at, vector3_t* up) {
