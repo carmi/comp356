@@ -38,7 +38,7 @@
 #define EPSILON .001
 
 // Window data.
-const int DEFAULT_WIN_WIDTH = 200 ;
+const int DEFAULT_WIN_WIDTH = 800 ;
 const int DEFAULT_WIN_HEIGHT = 600 ;
 int win_width ;
 int win_height ;
@@ -204,11 +204,11 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
                     depth);
             //TODO: not sure if this line is correct.
             //add_scaled_color(&color, sfc->refl_color, &trans_color, 1.0f);
-            debug("pre");
+            //debug("pre");
             if (sfc->ambient_color == NULL) assert(0);
             color_t* s_color_ = sfc->ambient_color;
             color_t s_color = (color_t) *s_color_;
-            debug("trans_color { %f, %f, %f }", trans_color.red, trans_color.green, trans_color.blue);
+            //debug("ending trans_color { %f, %f, %f }", trans_color.red, trans_color.green, trans_color.blue);
             color.red += (trans_color.red);
             color.green += (trans_color.green);
             color.blue += (trans_color.blue);
@@ -293,7 +293,7 @@ color_t get_specular_refl(ray3_t* ray, hit_record_t* hit_rec, int depth) {
  * @return the color to add from transparency of ray.
  */
 color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
-    debug("get_transparency**************");
+    //debug("get_transparency**************");
     // d - ray
     // <b>n</b> - normal; closest_hit_rec->normal
     // <i>n></i> - refractive index
@@ -323,10 +323,10 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
         refract(ray, &normal, index, &t_vec);
         
         // c = -d dot n
-        debug("ray_dir = { %f, %f, %f }", ray_dir.x, ray_dir.y, ray_dir.z);
-        debug("normal = { %f, %f, %f }", normal.x, normal.y, normal.z);
+        //debug("ray_dir = { %f, %f, %f }", ray_dir.x, ray_dir.y, ray_dir.z);
+        //debug("normal = { %f, %f, %f }", normal.x, normal.y, normal.z);
         c = ( -1.0f * dot(&ray_dir, &normal));
-        debug("index = %f, c = %f", index, c);
+        //debug("index = %f, c = %f", index, c);
         k = (color_t) {1.0f, 1.0f, 1.0f};
     } else {
         // RGB parts of atten
@@ -337,18 +337,18 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
             exp(-1.0f * (a->red) * t),
             exp(-1.0f * (a->green) * t),
             exp(-1.0f * (a->blue) * t) };
-        debug("a->red = %f; a->green = %f; a->blue = %f; t = %f", a->red, a->green, a->blue, t);
-        debug("k color { %f, %f, %f }", k.red, k.green, k.blue);
+        //debug("a->red = %f; a->green = %f; a->blue = %f; t = %f", a->red, a->green, a->blue, t);
+        //debug("k color { %f, %f, %f }", k.red, k.green, k.blue);
         // neg_normal = -n
         vector3_t neg_normal;
         multiply(&normal, -1.0f, &neg_normal);
         // inv_index = 1/n = 1/refr_index
         float inv_index = 1.0f/index;
         if (refract(ray, &neg_normal, inv_index, &t_vec)) {
-            debug("t_vec = { %f, %f, %f }", t_vec.x, t_vec.y, t_vec.z);
-            debug("normal = { %f, %f, %f }", normal.x, normal.y, normal.z);
+            //debug("t_vec = { %f, %f, %f }", t_vec.x, t_vec.y, t_vec.z);
+            //debug("normal = { %f, %f, %f }", normal.x, normal.y, normal.z);
             c = dot(&t_vec, &normal);
-            debug("index = %f, c = %f", index, c);
+            //debug("index = %f, c = %f", index, c);
         } else {
             trans_color = ray_trace(refl_ray, EPSILON, FLT_MAX, depth-1);
             trans_color.red = trans_color.red*k.red;
@@ -362,21 +362,21 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
     float R = (R0 + (1 - R0)*((1 - c)*(1 - c)*(1 - c)*(1 - c)*(1 - c)));
     color_t trans_color1, trans_color2;
 
-    debug("R0 = %f, R = %f", R0, R);
+    //debug("R0 = %f, R = %f", R0, R);
 
     trans_color1 = ray_trace(refl_ray, EPSILON, FLT_MAX, depth-1);
     ray3_t t_ray = {hit_rec->hit_pt, t_vec};
     trans_color2 = ray_trace(t_ray, EPSILON, FLT_MAX, depth-1);
     
-    debug("trans_color1 { %f, %f, %f }", trans_color1.red, trans_color1.green, trans_color1.blue);
+    //debug("trans_color1 { %f, %f, %f }", trans_color1.red, trans_color1.green, trans_color1.blue);
 
-    debug("trans_color2 { %f, %f, %f }", trans_color2.red, trans_color2.green, trans_color2.blue);
+    //debug("trans_color2 { %f, %f, %f }", trans_color2.red, trans_color2.green, trans_color2.blue);
 
-    debug("pre - trans_color { %f, %f, %f }", trans_color.red, trans_color.green, trans_color.blue);
+    //debug("pre - trans_color { %f, %f, %f }", trans_color.red, trans_color.green, trans_color.blue);
     trans_color.red = k.red*( (R*trans_color1.red) + ((1.0f - R)*trans_color2.red));
     trans_color.green = k.green*( (R*trans_color1.green) + ((1.0f - R)*trans_color2.green));
     trans_color.blue = k.blue*( (R*trans_color1.blue) + ((1.0f - R)*trans_color2.blue));
-    debug("post depth = %i - trans_color { %f, %f, %f }", depth, trans_color.red, trans_color.green, trans_color.blue);
+    //debug("post depth = %i - trans_color { %f, %f, %f }", depth, trans_color.red, trans_color.green, trans_color.blue);
     return trans_color;
     //return k(R color(p + tr) + (1 - R) color (p + tt);
 }
@@ -457,7 +457,7 @@ void handle_display() {
                 "view ray = {(%f, %f, %f), (%f, %f, %f)}.\n",
                 eye.x, eye.y, eye.z, 
                 ray.dir.x, ray.dir.y, ray.dir.z) ;
-            color = ray_trace(ray, 1.0 + EPSILON, FLT_MAX, 2) ;
+            color = ray_trace(ray, 1.0 + EPSILON, FLT_MAX, 5) ;
             *(fb+fb_offset(y, x, 0)) = color.red ;
             *(fb+fb_offset(y, x, 1)) = color.green ;
             *(fb+fb_offset(y, x, 2)) = color.blue ;
