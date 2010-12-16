@@ -37,6 +37,8 @@
 
 #define EPSILON .001
 
+// Application data
+// Keep track of whether ray is inside transparent surface or not.
 bool inside_transparent = false;
 
 // Window data.
@@ -75,6 +77,7 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth);
 bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
         t_vec);
 void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_ray);
+void toggle_trans_bool();
 
 // Lighting functions.
 color_t get_specular_refl(ray3_t* ray, hit_record_t* hit_rec, int depth) ;
@@ -200,22 +203,14 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
         }
 
         // Tranparency
-
         if (sfc->refr_index != -1) {
             toggle_trans_bool();
             color_t trans_color = get_transparency(&ray, &closest_hit_rec,
                     depth);
             // Only add returned color, don't multiply by a surface_color.
-            //TODO: 
-            //add_scaled_color(&color, sfc->refl_color, &trans_color, 1.0f);
-            if (sfc->ambient_color == NULL) assert(0);
-            color_t* s_color_ = sfc->ambient_color;
-            color_t s_color = (color_t) *s_color_;
-            //debug("ending trans_color { %f, %f, %f }", trans_color.red, trans_color.green, trans_color.blue);
             color.red += (trans_color.red);
             color.green += (trans_color.green);
             color.blue += (trans_color.blue);
-            //add_scaled_color(&color, sfc->refl_color, &trans_color, 1.0f);
         }
         // Ambient shading.
         add_scaled_color(&color, sfc->ambient_color, &ambient_light, 1.0f) ;
@@ -287,61 +282,60 @@ color_t get_specular_refl(ray3_t* ray, hit_record_t* hit_rec, int depth) {
 }
 
 /**
- * Get the color from transparency.
+ * Get the color from from reflection and refraction for transparent objects.
  *
  * @param ray the viewing ray
- * @param hit_rec the hit record for the point being shaded.
+ * @param hit_rec the hit record for the point being colored.
  * @param depth the current ray-tracing recursion depth.
  *
  * @return the color to add from transparency of ray.
  */
 color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
-    //debug("get_transparency**************");
+    //debug("get_transparency");
+
+    // Use notation from Shirley and Marschner:
     // d - ray
-    // <b>n</b> - normal; closest_hit_rec->normal
+    // n - normal = closest_hit_rec->normal
     // <i>n></i> - refractive index
     // t - transformed ray direction
 
-
     // Calculate reflected ray refl_ray: r = reflect(d,n).
     vector3_t normal = hit_rec->normal;
-    vector3_t ray_dir = ray->dir;
-    normalize(&ray_dir);
-
-    surface_t* sfc = hit_rec->sfc;
-    float index = sfc->refr_index;
-
     vector3_t refl_vector;
     reflect(ray, &normal, &refl_vector);
     ray3_t refl_ray = { hit_rec->hit_pt, refl_vector };
 
-    color_t trans_color;
+    // Store locally for cleaner code.
+    surface_t* sfc = hit_rec->sfc;
+    float index = sfc->refr_index;
 
+    // Variables populated in if/else blocks:
+    color_t trans_color;
     color_t k;
     float c;
     vector3_t t_vec;
+
+    // Normalize ray_dir for dot product
+    vector3_t ray_dir = ray->dir;
+    normalize(&ray_dir);
     if (dot(&ray_dir, &normal) < 0) {
         // Calculate direction refracted (transformed) ray, t_vec; 
-        bool refracted = refract(ray, &normal, index, &t_vec);
-        //if (!refracted) assert(0);
-        // TODO: what if refract returns false?
-        
-        // c = -d dot n
-        //debug("ray_dir = { %f, %f, %f }", ray_dir.x, ray_dir.y, ray_dir.z);
-        //debug("normal = { %f, %f, %f }", normal.x, normal.y, normal.z);
+        refract(ray, &normal, index, &t_vec);
         c = ( -1.0f * dot(&ray_dir, &normal));
-        //debug("index = %f, c = %f", index, c);
         k = (color_t) {1.0f, 1.0f, 1.0f};
     } else {
         // RGB parts of atten
         color_t* a = sfc->atten;
 
-        // Distance that ray travels through surface.
-        // Get distance from start of ray to hit_pt.
-        
-        // Get closest_hit_rec for ray_trace(t_vec)
         /*
-        ray3_t t_ray = {hit_rec->hit_pt, t_vec};
+        // Intensity of light diminishes by attenuation constant.
+        // The ray is currently inside the transparent surface, calculate the
+        // distance that the ray travels inside this transparent surface.
+        
+        //if (!inside_transparent) assert(0);
+        vector3_t dist_vec;
+        refract(ray, &normal, index, &dist_vec);
+        ray3_t t_ray = {hit_rec->hit_pt, dist_vec};
         hit_record_t t_hit_rec, t_closest_hit_rec ;
 
         // Get a hit record for the closest object that is hit.
@@ -362,40 +356,29 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
         lst_iterator_free(s) ;
         float t = dist(&hit_rec->hit_pt, &t_closest_hit_rec.hit_pt);
         debug("t = %f", t);
-        if (t > 1) t = hit_rec->t;
+        if (t > 1) t = 0.33;
         debug("t = %f", t);
+        t = 0.333f;
         */
 
-        
-        // TODO: this may not be correct, but it may be.
         float t = hit_rec->t;
-        //debug("t = %f", t);
-        //float t = dist(&hit_rec->hit_pt, ;
-
         k = (color_t) {
             exp(-1.0f * (a->red) * t),
             exp(-1.0f * (a->green) * t),
             exp(-1.0f * (a->blue) * t) };
-        //debug("a->red = %f; a->green = %f; a->blue = %f; t = %f", a->red, a->green, a->blue, t);
-        //debug("k color { %f, %f, %f }", k.red, k.green, k.blue);
-        // neg_normal = -n
-        vector3_t neg_normal;
+
+        vector3_t neg_normal; // neg_normal = -n
         multiply(&normal, -1.0f, &neg_normal);
         // inv_index = 1/n = 1/refr_index
         float inv_index = 1.0f/index;
-
         if (refract(ray, &neg_normal, inv_index, &t_vec)) {
-            //debug("t_vec = { %f, %f, %f }", t_vec.x, t_vec.y, t_vec.z);
-            //debug("normal = { %f, %f, %f }", normal.x, normal.y, normal.z);
             c = dot(&t_vec, &normal);
-            //debug("index = %f, c = %f", index, c);
         } else {
             // Doesnt' seem to ever enter this code segment.
             trans_color = ray_trace(refl_ray, EPSILON, FLT_MAX, depth-1);
             trans_color.red = trans_color.red*k.red;
             trans_color.green = trans_color.green*k.green;
             trans_color.blue = trans_color.blue*k.blue;
-            //debug("trans_color block7af { %f, %f, %f }", trans_color.red, trans_color.green, trans_color.blue);
             return trans_color;
         }
     }
@@ -404,39 +387,20 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
     float R = (R0 + (1 - R0)*((1 - c)*(1 - c)*(1 - c)*(1 - c)*(1 - c)));
     color_t trans_color1, trans_color2;
 
-    //debug("R0 = %f, R = %f", R0, R);
-
+    // Recursively ray trace on the reflected ray and the refracted ray.
     trans_color1 = ray_trace(refl_ray, EPSILON, FLT_MAX, depth-1);
     ray3_t t_ray = {hit_rec->hit_pt, t_vec};
     trans_color2 = ray_trace(t_ray, EPSILON, FLT_MAX, depth-1);
     
-    //debug("trans_color1 { %f, %f, %f }", trans_color1.red, trans_color1.green, trans_color1.blue);
-
-    //debug("trans_color2 { %f, %f, %f }", trans_color2.red, trans_color2.green, trans_color2.blue);
-
-
-    //debug("pre - trans_color { %f, %f, %f }", trans_color.red, trans_color.green, trans_color.blue);
-    trans_color.red = k.red*( (R*trans_color1.red) + ((1.0f - R)*trans_color2.red));
-    trans_color.green = k.green*( (R*trans_color1.green) + ((1.0f - R)*trans_color2.green));
-    trans_color.blue = k.blue*( (R*trans_color1.blue) + ((1.0f - R)*trans_color2.blue));
-    //debug("post depth = %i - trans_color { %f, %f, %f }", depth, trans_color.red, trans_color.green, trans_color.blue);
+    // Combine the reflected and refracted ray and return.
+    trans_color.red = k.red*( (R*trans_color1.red) + ((1.0f -
+                    R)*trans_color2.red));
+    trans_color.green = k.green*( (R*trans_color1.green) + ((1.0f -
+                    R)*trans_color2.green));
+    trans_color.blue = k.blue*( (R*trans_color1.blue) + ((1.0f -
+                    R)*trans_color2.blue));
     return trans_color;
-
-    //testing
-    /*
-    //debug("pre - trans_color { %f, %f, %f }", trans_color.red, trans_color.green, trans_color.blue);
-    trans_color.red = k.red*( ((1.0f - R)*trans_color2.red));
-    trans_color.green = k.green*( ((1.0f - R)*trans_color2.green));
-    trans_color.blue = k.blue*( ((1.0f - R)*trans_color2.blue));
-    debug("R*trans_color1.blue = %f", R*trans_color1.blue); 
-    //debug("post depth = %i - trans_color { %f, %f, %f }", depth, trans_color.red, trans_color.green, trans_color.blue);
-    return trans_color;
-    //return k(R color(p + tr) + (1 - R) color (p + tt);
-    */
 }
-
-
-
 
 /** Get the scale factor for Lambertian (diffuse) shading from a single
  *  light source.
@@ -599,7 +563,6 @@ bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
     // Notation from Shirley and Marschner page 305.
     // Calculate part 2 first, and check for total internal reflection.
 
-
     vector3_t* d = &ray->dir;
     vector3_t* n = normal;
 
@@ -614,8 +577,10 @@ bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
 
     //debug("ray_dir = { %f, %f, %f }", ray->dir.x, ray->dir.y, ray->dir.z);
     //debug("d = { %f, %f, %f }", d->x, d->y, d->z);
-    //debug("d_normalized = { %f, %f, %f }", d_normalized.x, d_normalized.y, d_normalized.z);
-    //debug("n_normalized = { %f, %f, %f }", n_normalized.x, n_normalized.y, n_normalized.z);
+    //debug("d_normalized = { %f, %f, %f }", d_normalized.x, d_normalized.y,
+    //d_normalized.z);
+    //debug("n_normalized = { %f, %f, %f }", n_normalized.x, n_normalized.y,
+    //n_normalized.z);
 
     float d_dot_n = dot(&d_normalized, &n_normalized);
     float d_dot_n2 = d_dot_n * d_dot_n;
@@ -688,6 +653,9 @@ void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_ray) {
     subtract(&v, &tmp, r_ray);
 }
 
+/**
+ * Toggle the value of inside_transparent from true to false to true.
+ */
 void toggle_trans_bool() {
     inside_transparent = !inside_transparent;
 }
