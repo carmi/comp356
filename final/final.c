@@ -1,6 +1,25 @@
-/** Simple ray-tracer implementation.
+/** Advanced ray-tracer implementation with transparency and bounding box trees.
  *
- *  @author N. Danner
+ *  @file final.c
+ *  Professor Danner
+ *  Computer Graphics 356
+ *  Final Project
+ *  Evan Carmi (WesID: 807136)
+ *  ecarmi@wesleyan.edu
+ *
+ * ----CHANGES----
+ *
+ * Changes to this file from original HW2 Solution Ray Tracer:
+ * Added the following new functions:
+ * get_transparency()
+ * refract()
+ * reflect()
+ *
+ * Slightly modified the following functions:
+ * get_specular_refl() - added in_trans parameter.
+ * ray_trace() - added in_trans parameter and modified shadows for transparent
+ *               objects.
+ *
  */
 
 #include <assert.h>
@@ -38,8 +57,6 @@
 #define EPSILON .001
 
 // Application data
-// Keep track of whether ray is inside transparent surface or not.
-bool inside_transparent = false;
 
 // Window data.
 const int DEFAULT_WIN_WIDTH = 800 ;
@@ -73,14 +90,15 @@ void handle_resize(int, int) ;
 // Application functions.
 void win2world(int, int, vector3_t*) ;
 void compute_eye_frame_basis() ;
-color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth);
-bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
-        t_vec);
+color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth,
+        bool in_trans);
+bool refract(ray3_t* ray, vector3_t* normal, float refr_index,
+        vector3_t* t_vec, bool in_trans);
 void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_vec);
-void toggle_trans_bool();
 
 // Lighting functions.
-color_t get_specular_refl(ray3_t* ray, hit_record_t* hit_rec, int depth) ;
+color_t get_specular_refl(ray3_t* ray, hit_record_t* hit_rec, int depth, bool
+        in_trans);
 float get_lambert_scale(vector3_t* light_dir, hit_record_t* hit_rec) ;
 float get_blinn_phong_scale(ray3_t* ray, vector3_t* light_dir, 
         hit_record_t* hit_rec) ;
@@ -162,11 +180,13 @@ int fb_offset(int y, int x, int c) {
  *  @param t1 the end of the interval for which to get a shade.
  *  @param depth the maximum number of times a reflect ray will be
  *      cast for objects with non-NULL reflective color.
+ *  @param in_trans whether the ray is inside a transparent surface or not.
+ * 
  *
  *  @return the color corresponding to the closest object hit by
  *      <code>r</code> in the interval <code>[t0, t1]</code>.
  */
-color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
+color_t ray_trace(ray3_t ray, float t0, float t1, int depth, bool in_trans) {
     assert(depth >= 0) ;
 
     color_t color = {0.0, 0.0, 0.0} ;
@@ -198,15 +218,14 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
         // Specular reflection.
         if (sfc->refl_color != NULL) {
             color_t refl_color = get_specular_refl(&ray,
-                    &closest_hit_rec, depth) ;
+                    &closest_hit_rec, depth, in_trans) ;
             add_scaled_color(&color, sfc->refl_color, &refl_color, 1.0f) ;
         }
 
         // Tranparency
         if (sfc->refr_index != -1) {
-            toggle_trans_bool();
             color_t trans_color = get_transparency(&ray, &closest_hit_rec,
-                    depth);
+                    depth, !in_trans);
             // Only add returned color, don't multiply by a surface_color.
             color.red += (trans_color.red);
             color.green += (trans_color.green);
@@ -226,8 +245,10 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
 
             // Check for global shadows.
             bool do_lighting = true ;
+
             // Bool for if the shadow is caused by transparent surface.
             bool trans_shadow = false ;
+
             ray3_t light_ray = {closest_hit_rec.hit_pt, light_dir} ;
             float light_dist = dist(&closest_hit_rec.hit_pt,
                     light->position) ;
@@ -237,7 +258,7 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
                 if (sfc_hit(sfc, &light_ray, EPSILON, light_dist, &hit_rec)) {
                     do_lighting = false ;
                     // If shadow is caused by transparent surface, we add
-                    // Lambertian shading rather than opaque shadows.
+                    // Lambertian shading only so our shadows are not opaque.
                     if (hit_rec.sfc->refr_index != -1) trans_shadow = true;
                     break ;
                 }
@@ -245,27 +266,17 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
             lst_iterator_free(s) ;
             if (!do_lighting) {
                 if (!trans_shadow) continue;
-                /*
-                if (inside_transparent) {
-                    continue;
-                } else {
-                    //continue;
-                    if (!trans_shadow) continue;
-                    //return (color_t) { 0.0f, 1.0f, 0.0f };
-                }
-                */
-
             }
 
             // Lambertian shading.
-            //if (!trans_shadow) {
             float scale = get_lambert_scale(&light_dir, &closest_hit_rec) ;
             add_scaled_color(&color, sfc->diffuse_color, light->color,
                     scale) ;
             //}
 
+            // Blin-Phong shading (if shadow is not caused by transparent
+            // surface).
             if (!trans_shadow) {
-                // Blin-Phong shading.
                 float phong_scale = get_blinn_phong_scale(&ray, &light_dir,
                         &closest_hit_rec) ;
                 add_scaled_color(&color, sfc->spec_color, light->color, 
@@ -276,19 +287,20 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
         lst_iterator_free(light_itr) ;
 
     }   // if (hit_something)
-
     return color ;
 }
 
 /** Get the shade from specular reflection.
  *  
- *  @param ray the viewing ray.
- *  @param hit_rec the hit record for the point being shaded.
- *  @param depth the current ray-tracing recursion depth.
+ * @param ray the viewing ray.
+ * @param hit_rec the hit record for the point being shaded.
+ * @param depth the current ray-tracing recursion depth.
+ * @param in_trans whether the ray is inside a transparent surface or not.
  *
  *  @return the color to add from ideal specular reflection of <code>ray</code>.
  */
-color_t get_specular_refl(ray3_t* ray, hit_record_t* hit_rec, int depth) {
+color_t get_specular_refl(ray3_t* ray, hit_record_t* hit_rec, int depth, bool
+        in_trans) {
     ray3_t refl_ray ;
     refl_ray.base = hit_rec->hit_pt ;
     refl_ray.dir = hit_rec->normal ;
@@ -297,20 +309,22 @@ color_t get_specular_refl(ray3_t* ray, hit_record_t* hit_rec, int depth) {
             &refl_ray.dir) ;
     subtract(&ray->dir, &refl_ray.dir, &refl_ray.dir) ;
     color_t refl_color = ray_trace(refl_ray, EPSILON, FLT_MAX, 
-            depth-1) ;
+            depth-1, in_trans) ;
     return refl_color ;
 }
 
 /**
- * Get the color from from reflection and refraction for transparent objects.
+ * Get the color from reflection and refraction for transparent objects.
  *
  * @param ray the viewing ray
  * @param hit_rec the hit record for the point being colored.
  * @param depth the current ray-tracing recursion depth.
+ * @param in_trans whether the ray is inside a transparent surface or not.
  *
  * @return the color to add from transparency of ray.
  */
-color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
+color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth, bool
+        in_trans) {
     //debug("get_transparency");
 
     // Use notation from Shirley and Marschner:
@@ -323,6 +337,7 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
     vector3_t normal = hit_rec->normal;
     vector3_t refl_vector;
     reflect(ray, &normal, &refl_vector);
+    normalize(&refl_vector);
     ray3_t refl_ray = { hit_rec->hit_pt, refl_vector };
 
     // Store locally for cleaner code.
@@ -340,25 +355,26 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
     normalize(&ray_dir);
     if (dot(&ray_dir, &normal) < 0) {
         // Calculate direction refracted (transformed) ray, t_vec; 
-        refract(ray, &normal, index, &t_vec);
+        refract(ray, &normal, index, &t_vec, in_trans);
         c = ( -1.0f * dot(&ray_dir, &normal));
         k = (color_t) {1.0f, 1.0f, 1.0f};
     } else {
-        // RGB parts of atten
-        color_t* a = sfc->atten;
 
-        /*
-        // Intensity of light diminishes by attenuation constant.
-        // The ray is currently inside the transparent surface, calculate the
-        // distance that the ray travels inside this transparent surface.
-        
-        //if (!inside_transparent) assert(0);
+        // Intensity of light diminishes by the attenuation constant of the
+        // surface proportionally to the distance the ray of light travels
+        // through the surface. To calculate this distance that the ray of
+        // light spends in the surface we follow a procedure similar to the
+        // procedure of shadows. We Iterate through all surfaces looking for
+        // the closest hit object in the direction of the refracted ray. Then
+        // we take the distance between the first hit records hit_pt and the
+        // closest hit record's hit_pt which is on the closest object.
+
         vector3_t dist_vec;
-        refract(ray, &normal, index, &dist_vec);
+        refract(ray, &normal, index, &dist_vec, in_trans);
         ray3_t t_ray = {hit_rec->hit_pt, dist_vec};
         hit_record_t t_hit_rec, t_closest_hit_rec ;
 
-        // Get a hit record for the closest object that is hit.
+        // Get a hit record for the closest object that is hit in dir t_ray.
         bool hit_something = false ;
         float t1 = FLT_MAX;
         list356_itr_t* s = lst_iterator(surfaces) ;
@@ -375,13 +391,9 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
         }
         lst_iterator_free(s) ;
         float t = dist(&hit_rec->hit_pt, &t_closest_hit_rec.hit_pt);
-        debug("t = %f", t);
-        if (t > 1) t = 0.33;
-        debug("t = %f", t);
-        t = 0.333f;
-        */
 
-        float t = hit_rec->t;
+        // Calculate attenuation.
+        color_t* a = sfc->atten;
         k = (color_t) {
             exp(-1.0f * (a->red) * t),
             exp(-1.0f * (a->green) * t),
@@ -391,14 +403,15 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
         multiply(&normal, -1.0f, &neg_normal);
         // inv_index = 1/n = 1/refr_index
         float inv_index = 1.0f/index;
-        if (refract(ray, &neg_normal, inv_index, &t_vec)) {
+        if (refract(ray, &neg_normal, inv_index, &t_vec, in_trans)) {
             c = dot(&t_vec, &normal);
         } else {
-            // Doesnt' seem to ever enter this code segment.
-            trans_color = ray_trace(refl_ray, EPSILON, FLT_MAX, depth-1);
+            trans_color = ray_trace(refl_ray, EPSILON, FLT_MAX, depth-1,
+                    !in_trans);
             trans_color.red = trans_color.red*k.red;
             trans_color.green = trans_color.green*k.green;
             trans_color.blue = trans_color.blue*k.blue;
+            //return (color_t) {1.0f, 1.0f, 0.0f};
             return trans_color;
         }
     }
@@ -408,10 +421,10 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
     color_t trans_color1, trans_color2;
 
     // Recursively ray trace on the reflected ray and the refracted ray.
-    trans_color1 = ray_trace(refl_ray, EPSILON, FLT_MAX, depth-1);
+    trans_color1 = ray_trace(refl_ray, EPSILON, FLT_MAX, depth-1, !in_trans);
     ray3_t t_ray = {hit_rec->hit_pt, t_vec};
-    trans_color2 = ray_trace(t_ray, EPSILON, FLT_MAX, depth-1);
-    
+    trans_color2 = ray_trace(t_ray, EPSILON, FLT_MAX, depth-1, !in_trans);
+
     // Combine the reflected and refracted ray and return.
     trans_color.red = k.red*( (R*trans_color1.red) + ((1.0f -
                     R)*trans_color2.red));
@@ -495,8 +508,8 @@ void handle_display() {
                 "view ray = {(%f, %f, %f), (%f, %f, %f)}.\n",
                 eye.x, eye.y, eye.z, 
                 ray.dir.x, ray.dir.y, ray.dir.z) ;
-            inside_transparent = false;
-            color = ray_trace(ray, 1.0 + EPSILON, FLT_MAX, 5) ;
+            //Start ray eye assuming we're not inside a transparent surface.
+            color = ray_trace(ray, 1.0 + EPSILON, FLT_MAX, 5, false) ;
             *(fb+fb_offset(y, x, 0)) = color.red ;
             *(fb+fb_offset(y, x, 1)) = color.green ;
             *(fb+fb_offset(y, x, 2)) = color.blue ;
@@ -508,6 +521,8 @@ void handle_display() {
             ((double)(end_time-start_time))/CLOCKS_PER_SEC) ;
 #endif
 
+    // The following line throws a implicit declaration compiler warning: but
+    // it was in hw2bp1.c solution file so I will ignore it.
     glWindowPos2s(0, 0) ;
     glDrawPixels(win_width, win_height, GL_RGB, GL_FLOAT, fb) ;
     glFlush() ;
@@ -563,7 +578,6 @@ void win2world(int x, int y, vector3_t* dir) {
     dir->z = u*eye_frame_u.z + v*eye_frame_v.z + w*eye_frame_w.z ;
     debug_c((x==400 && y==300),
         "win2world():  i, j, k = %f, %f, %f\n", dir->x, dir->y, dir->z) ;
-
 }
 
 /**
@@ -580,37 +594,24 @@ void win2world(int x, int y, vector3_t* dir) {
  * @param t_vec - location where to store the direction of transformed ray.
  */
 bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
-        t_vec) {
+        t_vec, bool in_trans) {
     // Notation from Shirley and Marschner page 305.
     // Calculate part 2 first, and check for total internal reflection.
 
     vector3_t* d = &ray->dir;
     vector3_t* n = normal;
+    normalize(d);
+    normalize(n);
 
-    //debug("ray_dir = { %f, %f, %f }", ray->dir.x, ray->dir.y, ray->dir.z);
-    //debug("d = { %f, %f, %f }", d->x, d->y, d->z);
-
-    vector3_t d_normalized = *d;
-    vector3_t n_normalized = *n;
-
-    normalize(&d_normalized);
-    normalize(&n_normalized);
-
-    //debug("ray_dir = { %f, %f, %f }", ray->dir.x, ray->dir.y, ray->dir.z);
-    //debug("d = { %f, %f, %f }", d->x, d->y, d->z);
-    //debug("d_normalized = { %f, %f, %f }", d_normalized.x, d_normalized.y,
-    //d_normalized.z);
-    //debug("n_normalized = { %f, %f, %f }", n_normalized.x, n_normalized.y,
-    //n_normalized.z);
-
-    float d_dot_n = dot(&d_normalized, &n_normalized);
+    float d_dot_n = dot(d, n);
     float d_dot_n2 = d_dot_n * d_dot_n;
 
     // Refraction index ratio:
     float refr_ratio;
-    // Assume air's index is 1.0, when leaving transparent surface invert
-    // ratio.
-    if (!inside_transparent) refr_ratio = refr_index;
+    // Assume objects are surrounded by air with index 1.0. As we move between
+    // transparent and non transparent surfaces our ratio is either refr_index
+    // or 1/refr_index.
+    if (!in_trans) refr_ratio = refr_index;
     else refr_ratio = 1.0f/refr_index;
 
     //refr_ratio = 1.0f/refr_index;
@@ -618,15 +619,8 @@ bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
 
     // Part 2: (1 - n^2(1 - d_dot_n^2)/1)
     float under_sqrt = (1.0f - refr_ratio2*(1 - d_dot_n2));
-    //debug("d_dot_n = %f", d_dot_n);
-    //debug("d_dot_n2 = %f", d_dot_n2);
-    //debug("refr_index = %f", refr_index);
-    //debug("refr_index2 = %f", refr_index2);
-    //debug("under_sqrt = %f", under_sqrt);
-    //assert(0);
     if (under_sqrt < 0) {
         // Total internal reflection.
-        //assert(0);
         return false;
     }
 
@@ -634,30 +628,25 @@ bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
     multiply(n, sqrt(under_sqrt), &part2);
 
     // Part 1: n(d - n(d dot n)
-
     vector3_t ndn, d_minus_ndn, part1;
     // d - n(d (dot) n)
     multiply(n, d_dot_n, &ndn);
     subtract(d, &ndn, &d_minus_ndn);
 
-    // Assuming refractive index of other surface is 1.
     multiply(&d_minus_ndn, refr_ratio, &part1);
 
     // Store part1 - part2 at t_ray, return true.
     subtract(&part1, &part2, t_vec);
-    //TODO: normalize?
     normalize(t_vec);
-    // Return true and toggle whether we are inside a transparent surface.
-    toggle_trans_bool();
     return true;
 }
 
 /**
- * Calculate the reflected ray off a surface.
+ * Calculate the direction of a reflected ray off of a surface.
  *
  * @param i_ray - the incoming incident ray.
  * @param normal - the normal vector of the surface.
- * @param r_vec - the vector to store the reflected ray at.
+ * @param r_vec - the vector to store the reflected ray's direction at.
  */
 void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_vec) {
     // Let v = incident vector, n = normal vector
@@ -668,14 +657,5 @@ void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_vec) {
     // 2 * (v dot n) n
     multiply(normal, (2.0f*dot(&v, normal)), &tmp);
 
-    //TODO: reflect ray being wrong doesn't change anything.
-    //subtract(&v, &tmp, r_vec);
     subtract(&v, &tmp, r_vec);
-}
-
-/**
- * Toggle the value of inside_transparent from true to false to true.
- */
-void toggle_trans_bool() {
-    inside_transparent = !inside_transparent;
 }

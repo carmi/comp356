@@ -1,6 +1,24 @@
 /** Surface functions.
  *
- *  @author N. Danner
+ *  @file surface.c
+ *  Professor Danner
+ *  Computer Graphics 356
+ *  Final Project
+ *  Evan Carmi (WesID: 807136)
+ *  ecarmi@wesleyan.edu
+ *
+ * ----CHANGES----
+ *
+ * Changes to this file from original given sample surface.c
+ *
+ * Define AXIS integers.
+ * Define structure of bbt_node_data
+ * Define  the following functions:
+ *  sfc_hit_bbt() function
+ *  make_bbt_node() function
+ *  make_bbt_node_helper() function
+ *  mid_point() function
+ *
  */
 
 #include <assert.h>
@@ -61,12 +79,6 @@ typedef struct _bbt_node_data_t {
     /** The right child of the node.
      */
     surface_t* right;
-    /** True if left child is a leaf, false otherwise.
-     */
-    bool left_leaf;
-    /** True if right child is a leaf, false otherwise.
-     */
-    bool right_leaf;
 } bbt_node_data;
 
 
@@ -121,6 +133,26 @@ static bool sfc_hit_sphere(surface_t* sfc, ray3_t* ray, float t0,
  */
 static bool sfc_hit_tri(surface_t* sfc, ray3_t* ray, float t0,
         float t1, hit_record_t* hit) ;
+
+/**
+ * Bounding box ray intersection function.
+ *
+ * @param sfc - the bounding box tree noe surface.
+ * @param ray the ray.
+ * @param t0 the left endpoint of the ray.
+ * @param t1 the right endpoint of the ray.
+ * @param hit the hit record to fill in if <code>ray</code> hits
+ *      <code>sfc</code>.
+ *
+ * @return <code>true</code> if <code>ray</code> intersects 
+ *      <code>sfc</code> in the interval [<code>t0</code>,<code>t1</code>],
+ *      <code>false</code> otherwise.  If there is an intersection,
+ *      <code>hit</code> will be populated with data describing the
+ *      intersection point; otherwise <code>hit</code> will be unmodified.
+ */
+bool sfc_hit_bbt(surface_t* sfc, ray3_t* ray, float t0, float t1,
+        hit_record_t* rec);
+
 
 /** Plane-ray intersection function.
  *  
@@ -187,43 +219,31 @@ static float max4(float v, float a, float b, float c) {
     return max(v, max(a, max(b, c))) ;
 }
 /**
- * Calculate and return the center of a bbox along a given axis.
- *
+ * Calculate and return the center of a bounding box along a given axis.
  *
  * @param box the bbox of which to calculate center value.
  * @param axis the axis along which to calculate center.
  */
 float mid_point(bbox_t* bbox, int axis) {
-    debug("mid_point(axis = %i)", axis);
     float a, b;
-    debug("bbox->left = %f", bbox->left);
-    debug("bbox->right = %f", bbox->right);
-    debug("bbox->bottom = %f", bbox->bottom);
-    debug("bbox->top = %f", bbox->top);
-    debug("bbox->near = %f", bbox->near);
-    debug("bbox->far = %f", bbox->far);
     switch (axis) {
         case (X_AXIS):
             a = bbox->left;
             b = bbox->right;
-            debug("a = %f, b = %f");
             break;
         case (Y_AXIS):
             a = bbox->bottom;
             b = bbox->top;
-            debug("a = %f, b = %f");
             break;
         case (Z_AXIS):
             a = bbox->near;
             b = bbox->far;
-            debug("a = %f, b = %f");
             break;
         default:
             assert(0);
     }
     float dist = b - a;
     float result = (a + (dist)/2.0f);
-    debug("result = %f", result);
     return result;
 }
 
@@ -459,20 +479,10 @@ bool sfc_hit_bbt(surface_t* sfc, ray3_t* ray, float t0, float t1,
         surface_t* lchild = ndata->left;
         surface_t* rchild = ndata->right;
 
-        //debug("recursively hitting");
-        
-        //if (lchild == NULL) debug("lchild is null");
-        //if (rchild == NULL) debug("rchild is null");
-        //if (ndata->left_leaf == false) debug("left_leaf false");
-        //if (ndata->right_leaf == false) debug("right_leaf false");
-
         bool left_hit = false;
         bool right_hit = false;
-        // Left child: it can be a leaf or another bbt_node.
-        // debug("lchild = %p", lchild);
 
         if (lchild != NULL) {
-            //debug("has lchild");
             left_hit = sfc_hit(lchild, ray, t0, t1, &lrec);
         }
         if (rchild != NULL) {
@@ -490,7 +500,6 @@ bool sfc_hit_bbt(surface_t* sfc, ray3_t* ray, float t0, float t1,
         else return false;
     }
     else {
-        //debug("hit() returning false");
         return false;
     }
 }
@@ -557,7 +566,8 @@ static bool hit_bbox(bbox_t* bbox, ray3_t* ray, float t0, float t1) {
  *      bounding box and must not be transparent.
  */
 surface_t* make_bbt_node(list356_t* surfaces) {
-    // Call the helper function along x axis.
+    debug("Constructing Bounding-box tree.");
+    // Call the helper function starting along x axis.
     return make_bbt_node_helper(surfaces, X_AXIS);
 }
 
@@ -577,7 +587,6 @@ surface_t* make_bbt_node(list356_t* surfaces) {
  *      integer with x=0, y=1, z=2.
  */
 surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
-    debug("make_bbt_node_helper(surfaces.length = %i, axis = %i)", lst_size(surfaces), axis);
     // Create a bounding box node that bounds everything in surfaces.
     surface_t* node = MALLOC1(surface_t);
     node->bbox = MALLOC1(bbox_t);
@@ -585,9 +594,7 @@ surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
     // Allocate bbt_node data;
     bbt_node_data* data = MALLOC1(bbt_node_data);
     data->left = NULL;
-    data->left_leaf = false;
     data->right = NULL;
-    data->right_leaf = false;
 
     // Set the bounding box of node. Find least/greatest x, y, and z edges.
     // This will setup correct bbox regardless of the number of surfaces, so we
@@ -613,8 +620,6 @@ surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
             node->bbox->top = max(sfc->bbox->top, node->bbox->top);
             node->bbox->near = min(sfc->bbox->near, node->bbox->near);
             node->bbox->far = max(sfc->bbox->far, node->bbox->far);
-            //debug("node->bbox->near: %f", node->bbox->near);
-            //debug("node->bbox->far: %f", node->bbox->far);
         }
     }
     lst_iterator_free(s);
@@ -624,27 +629,20 @@ surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
     int length = lst_size(surfaces);
 
     if (length == 0) {
-        debug("0 length");
+        debug("Length zero list of surfaces. Client misuse of function.");
         assert(0);
     } else if (length == 1) {
         data->left = lst_get(surfaces, 0);
-        data->left_leaf = true;
 
         if (data->left->hit_fn == NULL) assert(0);
-        //debug("***hit_fn = %p", data->left->hit_fn);
-        //debug("data->left pointer: %p", data->left);
 
         data->right = NULL;
     } else if (length == 2) {
         data->left = lst_get(surfaces, 0);
-        data->left_leaf = true;
 
         if (data->left->hit_fn == NULL) assert(0);
-        //debug("***hit_fn = %p", data->left->hit_fn);
-        //debug("data->left pointer: %p", data->left);
 
         data->right = lst_get(surfaces, 1);
-        data->right_leaf = true;
 
         if (data->right->hit_fn == NULL) assert(0);
     } else {
@@ -669,11 +667,8 @@ surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
             // Jitter curr_center by (-.01, .01) to avoid having all surfaces
             // end up in one sublist multiple times.
 
-            //TODO: could be divide by 0
             float jitter = (RAND(-100, 100))/10000.0f;
-            debug("curr_center = %f, jitter = %f", curr_center, jitter);
             curr_center += jitter;
-            debug("curr_center post jitter = %f", curr_center);
             if (curr_center <= mid) {
                 lst_add(left_sublist, curr_sfc);
             } else {
@@ -681,9 +676,6 @@ surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
             }
         }
         lst_iterator_free(s);
-
-        debug("length of left_surfaces: %i", lst_size(left_sublist));
-        debug("length of right_surfaces: %i", lst_size(right_sublist));
 
         // Set left and right children to be bbt_node's created off
         // left/right_sublist.
@@ -701,81 +693,5 @@ surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
     }
     set_sfc_data(node, data, sfc_hit_bbt,
             NULL, NULL, NULL, 0) ;
-    debug("returned node pointer: %p", node);
     return node;
-}
-
-/**
- * bbt_hit recursively checks if the ray hits the bbt_node tree given.
- * Assume, node is bbt_node and has bbox.
- *
- */
-bool hit(surface_t* node, ray3_t* ray, float t0, float t1, hit_record_t* rec) {
-    //debug("hit(*node = %p)", node);
-    if (hit_bbox(node->bbox, ray, t0, t1)) {
-        hit_record_t lrec, rrec;
-        
-        // If node is a bbt_node surface then recursively call hit() on its
-        // children. Check if it's a bbt_node surface by comparing it's hit_fn.
-        // Recursive case, call hit() on left and right children.
-        bbt_node_data* ndata = (bbt_node_data*)(node->data);
-        surface_t* lchild = ndata->left;
-        surface_t* rchild = ndata->right;
-        debug("recursively hitting");
-        if (lchild == NULL) debug("lchild is null");
-        if (rchild == NULL) debug("rchild is null");
-        if (ndata->left_leaf == false) debug("left_leaf false");
-        if (ndata->right_leaf == false) debug("right_leaf false");
-
-
-
-        bool left_hit = false;
-        bool right_hit = false;
-        // Left child: it can be a leaf or another bbt_node.
-        debug("lchild = %p", lchild);
-        if (lchild != NULL) {
-            debug("has lchild");
-            if (ndata->left_leaf == true) {
-                debug("lchild is a leaf");
-                debug("ndata %i", ndata->left_leaf);
-                debug("ndata %p", ndata->left);
-
-
-
-
-                if (ndata->left->hit_fn == NULL) assert(0);
-                sfc_hit(lchild, ray, t0, t1, &lrec);
-            } else {
-                debug("lchild is bbt_node");
-                left_hit = hit(lchild, ray, t0, t1, &lrec);
-            }
-        }
-
-        // Right child
-        debug("rchild = %p", rchild);
-        if (rchild != NULL) {
-            debug("has rchild");
-            if (ndata->right_leaf == true) {
-                debug("rchild is a leaf");
-                sfc_hit(rchild, ray, t0, t1, &rrec);
-            } else {
-                debug("rchild is bbt_node");
-                left_hit = hit(rchild, ray, t0, t1, &rrec);
-            }
-        }
-
-        if (left_hit && right_hit) {
-            if (lrec.t < rrec.t) memcpy(rec, &lrec, sizeof(hit_record_t));
-            else memcpy(rec, &rrec, sizeof(hit_record_t));
-        }
-        else if (left_hit) memcpy(rec, &lrec, sizeof(hit_record_t));
-        else if (right_hit) memcpy(rec, &rrec, sizeof(hit_record_t));
-
-        if (left_hit || right_hit) return true;
-        else return false;
-    }
-    else {
-        //debug("hit() returning false");
-        return false;
-    }
 }
