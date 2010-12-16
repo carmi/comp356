@@ -37,6 +37,8 @@
 
 #define EPSILON .001
 
+bool inside_transparent = false;
+
 // Window data.
 const int DEFAULT_WIN_WIDTH = 800 ;
 const int DEFAULT_WIN_HEIGHT = 600 ;
@@ -200,11 +202,12 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
         // Tranparency
 
         if (sfc->refr_index != -1) {
+            toggle_trans_bool();
             color_t trans_color = get_transparency(&ray, &closest_hit_rec,
                     depth);
-            //TODO: not sure if this line is correct.
+            // Only add returned color, don't multiply by a surface_color.
+            //TODO: 
             //add_scaled_color(&color, sfc->refl_color, &trans_color, 1.0f);
-            //debug("pre");
             if (sfc->ambient_color == NULL) assert(0);
             color_t* s_color_ = sfc->ambient_color;
             color_t s_color = (color_t) *s_color_;
@@ -212,8 +215,8 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
             color.red += (trans_color.red);
             color.green += (trans_color.green);
             color.blue += (trans_color.blue);
+            //add_scaled_color(&color, sfc->refl_color, &trans_color, 1.0f);
         }
-            
         // Ambient shading.
         add_scaled_color(&color, sfc->ambient_color, &ambient_light, 1.0f) ;
 
@@ -303,12 +306,11 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
     // Calculate reflected ray refl_ray: r = reflect(d,n).
     vector3_t normal = hit_rec->normal;
     vector3_t ray_dir = ray->dir;
-    //TODO: normalize?
     normalize(&ray_dir);
-    //hit_record_t rec = &hit_rec;
 
     surface_t* sfc = hit_rec->sfc;
     float index = sfc->refr_index;
+
     vector3_t refl_vector;
     reflect(ray, &normal, &refl_vector);
     ray3_t refl_ray = { hit_rec->hit_pt, refl_vector };
@@ -320,7 +322,9 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
     vector3_t t_vec;
     if (dot(&ray_dir, &normal) < 0) {
         // Calculate direction refracted (transformed) ray, t_vec; 
-        refract(ray, &normal, index, &t_vec);
+        bool refracted = refract(ray, &normal, index, &t_vec);
+        //if (!refracted) assert(0);
+        // TODO: what if refract returns false?
         
         // c = -d dot n
         //debug("ray_dir = { %f, %f, %f }", ray_dir.x, ray_dir.y, ray_dir.z);
@@ -331,7 +335,40 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
     } else {
         // RGB parts of atten
         color_t* a = sfc->atten;
+
+        // Distance that ray travels through surface.
+        // Get distance from start of ray to hit_pt.
+        
+        // Get closest_hit_rec for ray_trace(t_vec)
+        /*
+        ray3_t t_ray = {hit_rec->hit_pt, t_vec};
+        hit_record_t hit_rec, closest_hit_rec ;
+
+        // Get a hit record for the closest object that is hit.
+        bool hit_something = false ;
+        list356_itr_t* s = lst_iterator(surfaces) ;
+        while (lst_has_next(s)) {
+            surface_t* sfc = lst_next(s) ;
+            if (sfc_hit(sfc, &ray, t0, t1, &hit_rec)) {
+                if (hit_rec.t < t1) {
+                    hit_something = true ;
+                    memcpy(&closest_hit_rec, &hit_rec, 
+                            sizeof(hit_record_t)) ;
+                    t1 = hit_rec.t ;
+                }
+            }
+        }
+        lst_iterator_free(s) ;
+        */
+
+
+
+
+
+        // TODO: this may not be correct, but it may be.
         float t = hit_rec->t;
+        //debug("t = %f", t);
+        //float t = dist(&hit_rec->hit_pt, ;
 
         k = (color_t) {
             exp(-1.0f * (a->red) * t),
@@ -344,12 +381,14 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
         multiply(&normal, -1.0f, &neg_normal);
         // inv_index = 1/n = 1/refr_index
         float inv_index = 1.0f/index;
+
         if (refract(ray, &neg_normal, inv_index, &t_vec)) {
             //debug("t_vec = { %f, %f, %f }", t_vec.x, t_vec.y, t_vec.z);
             //debug("normal = { %f, %f, %f }", normal.x, normal.y, normal.z);
             c = dot(&t_vec, &normal);
             //debug("index = %f, c = %f", index, c);
         } else {
+            // Doesnt' seem to ever enter this code segment.
             trans_color = ray_trace(refl_ray, EPSILON, FLT_MAX, depth-1);
             trans_color.red = trans_color.red*k.red;
             trans_color.green = trans_color.green*k.green;
@@ -358,7 +397,7 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
         }
     }
 
-    float R0 = ((index - 1)*(index - 1))/((index + 1)*(index + 1));
+    float R0 = (( (index - 1)*(index - 1) )/( (index + 1)*(index + 1) ));
     float R = (R0 + (1 - R0)*((1 - c)*(1 - c)*(1 - c)*(1 - c)*(1 - c)));
     color_t trans_color1, trans_color2;
 
@@ -372,13 +411,25 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
 
     //debug("trans_color2 { %f, %f, %f }", trans_color2.red, trans_color2.green, trans_color2.blue);
 
+
     //debug("pre - trans_color { %f, %f, %f }", trans_color.red, trans_color.green, trans_color.blue);
     trans_color.red = k.red*( (R*trans_color1.red) + ((1.0f - R)*trans_color2.red));
     trans_color.green = k.green*( (R*trans_color1.green) + ((1.0f - R)*trans_color2.green));
     trans_color.blue = k.blue*( (R*trans_color1.blue) + ((1.0f - R)*trans_color2.blue));
     //debug("post depth = %i - trans_color { %f, %f, %f }", depth, trans_color.red, trans_color.green, trans_color.blue);
     return trans_color;
+
+    //testing
+    /*
+    //debug("pre - trans_color { %f, %f, %f }", trans_color.red, trans_color.green, trans_color.blue);
+    trans_color.red = k.red*( ((1.0f - R)*trans_color2.red));
+    trans_color.green = k.green*( ((1.0f - R)*trans_color2.green));
+    trans_color.blue = k.blue*( ((1.0f - R)*trans_color2.blue));
+    debug("R*trans_color1.blue = %f", R*trans_color1.blue); 
+    //debug("post depth = %i - trans_color { %f, %f, %f }", depth, trans_color.red, trans_color.green, trans_color.blue);
+    return trans_color;
     //return k(R color(p + tr) + (1 - R) color (p + tt);
+    */
 }
 
 
@@ -545,17 +596,50 @@ bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
     // Notation from Shirley and Marschner page 305.
     // Calculate part 2 first, and check for total internal reflection.
 
+
     vector3_t* d = &ray->dir;
     vector3_t* n = normal;
-    float d_dot_n = dot(d, n);
+
+    //debug("ray_dir = { %f, %f, %f }", ray->dir.x, ray->dir.y, ray->dir.z);
+    //debug("d = { %f, %f, %f }", d->x, d->y, d->z);
+
+    vector3_t d_normalized = *d;
+    vector3_t n_normalized = *n;
+
+    //normalize(&d_normalized);
+    //normalize(&n_normalized);
+
+    //debug("ray_dir = { %f, %f, %f }", ray->dir.x, ray->dir.y, ray->dir.z);
+    //debug("d = { %f, %f, %f }", d->x, d->y, d->z);
+    //debug("d_normalized = { %f, %f, %f }", d_normalized.x, d_normalized.y, d_normalized.z);
+    //debug("n_normalized = { %f, %f, %f }", n_normalized.x, n_normalized.y, n_normalized.z);
+
+    float d_dot_n = dot(&d_normalized, &n_normalized);
     float d_dot_n2 = d_dot_n * d_dot_n;
-    float refr_index2 = refr_index * refr_index;
+
+    // Refraction index ratio:
+    float refr_ratio;
+    if (!inside_transparent) {
+        refr_ratio = refr_index;
+        toggle_trans_bool();
+    } else {
+        refr_ratio = 1.0f/refr_index;
+        toggle_trans_bool();
+    }
+
+    float refr_ratio2 = refr_ratio * refr_ratio;
 
     // Part 2: (1 - n^2(1 - d_dot_n^2)/1)
-    float under_sqrt = (1.0f - refr_index2*(1 - d_dot_n2));
-
+    float under_sqrt = (1.0f - refr_ratio2*(1 - d_dot_n2));
+    //debug("d_dot_n = %f", d_dot_n);
+    //debug("d_dot_n2 = %f", d_dot_n2);
+    //debug("refr_index = %f", refr_index);
+    //debug("refr_index2 = %f", refr_index2);
+    //debug("under_sqrt = %f", under_sqrt);
+    //assert(0);
     if (under_sqrt < 0) {
         // Total internal reflection.
+        //assert(0);
         return false;
     }
 
@@ -570,7 +654,7 @@ bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
     subtract(d, &ndn, &d_minus_ndn);
 
     // Assuming refractive index of other surface is 1.
-    multiply(&d_minus_ndn, refr_index, &part1);
+    multiply(&d_minus_ndn, refr_ratio, &part1);
 
     // Store part1 - part2 at t_ray, return true.
     subtract(&part1, &part2, t_vec);
@@ -595,5 +679,11 @@ void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_ray) {
     // 2 * (v dot n) n
     multiply(normal, (2.0f*dot(&v, normal)), &tmp);
 
+    //TODO: reflect ray being wrong doesn't change anything.
+    //subtract(&v, &tmp, r_ray);
     subtract(&v, &tmp, r_ray);
+}
+
+void toggle_trans_bool() {
+    inside_transparent = !inside_transparent;
 }
