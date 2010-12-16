@@ -76,7 +76,7 @@ void compute_eye_frame_basis() ;
 color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth);
 bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
         t_vec);
-void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_ray);
+void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_vec);
 void toggle_trans_bool();
 
 // Lighting functions.
@@ -220,12 +220,14 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
         while (lst_has_next(light_itr)) {
             light_t* light = lst_next(light_itr) ;
             vector3_t light_dir ;
-            pv_subtract(light->position, &(closest_hit_rec.hit_pt), 
+            pv_subtract(light->position, &(closest_hit_rec.hit_pt),
                     &light_dir) ;
             normalize(&light_dir) ;
 
             // Check for global shadows.
             bool do_lighting = true ;
+            // Bool for if the shadow is caused by transparent surface.
+            bool trans_shadow = false ;
             ray3_t light_ray = {closest_hit_rec.hit_pt, light_dir} ;
             float light_dist = dist(&closest_hit_rec.hit_pt,
                     light->position) ;
@@ -234,23 +236,41 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth) {
                 surface_t* sfc = lst_next(s) ;
                 if (sfc_hit(sfc, &light_ray, EPSILON, light_dist, &hit_rec)) {
                     do_lighting = false ;
+                    // If shadow is caused by transparent surface, we add
+                    // Lambertian shading rather than opaque shadows.
+                    if (hit_rec.sfc->refr_index != -1) trans_shadow = true;
                     break ;
                 }
             }
             lst_iterator_free(s) ;
             if (!do_lighting) {
-                continue ;
+                if (!trans_shadow) continue;
+                /*
+                if (inside_transparent) {
+                    continue;
+                } else {
+                    //continue;
+                    if (!trans_shadow) continue;
+                    //return (color_t) { 0.0f, 1.0f, 0.0f };
+                }
+                */
+
             }
 
             // Lambertian shading.
+            //if (!trans_shadow) {
             float scale = get_lambert_scale(&light_dir, &closest_hit_rec) ;
-            add_scaled_color(&color, sfc->diffuse_color, light->color, scale) ;
+            add_scaled_color(&color, sfc->diffuse_color, light->color,
+                    scale) ;
+            //}
 
-            // Blin-Phong shading.
-            float phong_scale = get_blinn_phong_scale(&ray, &light_dir,
-                    &closest_hit_rec) ;
-            add_scaled_color(&color, sfc->spec_color, light->color, 
-                    phong_scale) ;
+            if (!trans_shadow) {
+                // Blin-Phong shading.
+                float phong_scale = get_blinn_phong_scale(&ray, &light_dir,
+                        &closest_hit_rec) ;
+                add_scaled_color(&color, sfc->spec_color, light->color, 
+                        phong_scale) ;
+            }
         }   // while(lst_has_next(light_itr))
 
         lst_iterator_free(light_itr) ;
@@ -475,6 +495,7 @@ void handle_display() {
                 "view ray = {(%f, %f, %f), (%f, %f, %f)}.\n",
                 eye.x, eye.y, eye.z, 
                 ray.dir.x, ray.dir.y, ray.dir.z) ;
+            inside_transparent = false;
             color = ray_trace(ray, 1.0 + EPSILON, FLT_MAX, 5) ;
             *(fb+fb_offset(y, x, 0)) = color.red ;
             *(fb+fb_offset(y, x, 1)) = color.green ;
@@ -587,13 +608,10 @@ bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
 
     // Refraction index ratio:
     float refr_ratio;
-    if (!inside_transparent) {
-        refr_ratio = refr_index;
-        toggle_trans_bool();
-    } else {
-        refr_ratio = 1.0f/refr_index;
-        toggle_trans_bool();
-    }
+    // Assume air's index is 1.0, when leaving transparent surface invert
+    // ratio.
+    if (!inside_transparent) refr_ratio = refr_index;
+    else refr_ratio = 1.0f/refr_index;
 
     //refr_ratio = 1.0f/refr_index;
     float refr_ratio2 = refr_ratio * refr_ratio;
@@ -629,17 +647,19 @@ bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
     subtract(&part1, &part2, t_vec);
     //TODO: normalize?
     normalize(t_vec);
+    // Return true and toggle whether we are inside a transparent surface.
+    toggle_trans_bool();
     return true;
 }
 
 /**
- * Calculate the reflected ray of a surface.
+ * Calculate the reflected ray off a surface.
  *
  * @param i_ray - the incoming incident ray.
  * @param normal - the normal vector of the surface.
- * @param r_ray - the vector to store the reflected ray at.
+ * @param r_vec - the vector to store the reflected ray at.
  */
-void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_ray) {
+void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_vec) {
     // Let v = incident vector, n = normal vector
     // Reflection vector = v - 2(v dot n)n
     vector3_t v = i_ray->dir;
@@ -649,8 +669,8 @@ void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_ray) {
     multiply(normal, (2.0f*dot(&v, normal)), &tmp);
 
     //TODO: reflect ray being wrong doesn't change anything.
-    //subtract(&v, &tmp, r_ray);
-    subtract(&v, &tmp, r_ray);
+    //subtract(&v, &tmp, r_vec);
+    subtract(&v, &tmp, r_vec);
 }
 
 /**
