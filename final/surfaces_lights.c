@@ -89,15 +89,14 @@ list356_t* get_surfaces() {
                     cube_vertices[indices[3*i]],
                     cube_vertices[indices[3*i+1]],
                     cube_vertices[indices[3*i+2]],
-                    &GREEN, &GREEN, &WHITE, 10.0f) ;
+                    &BLACK, &BLACK, &WHITE, 10.0f) ;
         t->refr_index = 1.1f ;
         t->atten = &GREENISH ;
         lst_add(surfaces, t) ;
     }
 
     list356_itr_t* itr = lst_iterator(table_surfaces) ;
-    //while (lst_has_next(itr)) lst_add(surfaces, lst_next(itr)) ;
-    lst_add(surfaces, make_bbt_node(table_surfaces));
+    while (lst_has_next(itr)) lst_add(surfaces, lst_next(itr)) ;
     lst_free(table_surfaces) ;
 
     // Plane at z=-1.
