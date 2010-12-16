@@ -48,26 +48,26 @@
 typedef struct _sphere_data_t {
     /** The center of the sphere.
      */
-    point3_t center ;
+    point3_t center;
     /** The radius of the sphere.
      */
-    float radius ;
-} sphere_data_t ;
+    float radius;
+} sphere_data_t;
 
 /** The type of a triangle surface.
  */
 typedef struct _triangle_data_t {
-    point3_t a, b, c ;
-    vector3_t normal ;
-} triangle_data_t ;
+    point3_t a, b, c;
+    vector3_t normal;
+} triangle_data_t;
 
 /** The type of a plane surface.  A plane is specified by three points;
  *  the plane extends infinitely far in all directions.
  */
 typedef struct _plane_data_t {
-    point3_t a, b, c ;
-    vector3_t normal ;
-} plane_data_t ;
+    point3_t a, b, c;
+    vector3_t normal;
+} plane_data_t;
 
 /** The type of a bbt_node surface. A bbox_node surface is specified by left
  * and right child bbt_node surfaces.
@@ -96,7 +96,7 @@ typedef struct _bbt_node_data_t {
  */
 static void set_sfc_data(surface_t* surface, void* data,
         bool (*hit_fn)(surface_t*, ray3_t*, float, float, hit_record_t*),
-        color_t* diff, color_t* amb, color_t* spec, float phong_exp) ;
+        color_t* diff, color_t* amb, color_t* spec, float phong_exp);
 
 /** Sphere-ray intersection function.
  *  
@@ -114,7 +114,7 @@ static void set_sfc_data(surface_t* surface, void* data,
  *      intersection point; otherwise <code>hit</code> will be unmodified.
  */
 static bool sfc_hit_sphere(surface_t* sfc, ray3_t* ray, float t0,
-        float t1, hit_record_t* hit) ;
+        float t1, hit_record_t* hit);
 
 /** Triangle-ray intersection function.
  *  
@@ -132,7 +132,7 @@ static bool sfc_hit_sphere(surface_t* sfc, ray3_t* ray, float t0,
  *      intersection point; otherwise <code>hit</code> will be unmodified.
  */
 static bool sfc_hit_tri(surface_t* sfc, ray3_t* ray, float t0,
-        float t1, hit_record_t* hit) ;
+        float t1, hit_record_t* hit);
 
 /**
  * Bounding box ray intersection function.
@@ -170,7 +170,7 @@ bool sfc_hit_bbt(surface_t* sfc, ray3_t* ray, float t0, float t1,
  *      intersection point; otherwise <code>hit</code> will be unmodified.
  */
 static bool sfc_hit_plane(surface_t* sfc, ray3_t* ray, float t0,
-        float t1, hit_record_t* hit) ;
+        float t1, hit_record_t* hit);
 
 /** Bounding-box-ray intersection function.
  *  
@@ -183,7 +183,7 @@ static bool sfc_hit_plane(surface_t* sfc, ray3_t* ray, float t0,
  *      <code>sfc</code> in the interval [<code>t0</code>,<code>t1</code>],
  *      <code>false</code> otherwise.
  */
-static bool hit_bbox(bbox_t* bbox, ray3_t* ray, float t0, float t1) ;
+static bool hit_bbox(bbox_t* bbox, ray3_t* ray, float t0, float t1);
 
 // BBT Node functions declarations.
 surface_t* make_bbt_node_helper(list356_t* surfaces, int axis);
@@ -203,7 +203,7 @@ float mid_point(bbox_t* bbox, int axis);
  *  @return min(v, a, b, c).
  */
 static float min4(float v, float a, float b, float c) {
-    return min(v, min(a, min(b, c))) ;
+    return min(v, min(a, min(b, c)));
 }
 
 /** Compute the maximum of four numbers.
@@ -216,7 +216,7 @@ static float min4(float v, float a, float b, float c) {
  *  @return max(v, a, b, c).
  */
 static float max4(float v, float a, float b, float c) {
-    return max(v, max(a, max(b, c))) ;
+    return max(v, max(a, max(b, c)));
 }
 /**
  * Calculate and return the center of a bounding box along a given axis.
@@ -252,26 +252,26 @@ surface_t* make_sphere(float x, float y, float z, float radius,
         float phong_exp) {
 
     // Sphere data.
-    sphere_data_t* data = MALLOC1(sphere_data_t) ;
-    data->center = (point3_t){x, y, z} ;
-    data->radius = radius ;
+    sphere_data_t* data = MALLOC1(sphere_data_t);
+    data->center = (point3_t){x, y, z};
+    data->radius = radius;
 
-    surface_t* surface = MALLOC1(surface_t) ;
+    surface_t* surface = MALLOC1(surface_t);
 
     // Bounding box.
-    surface->bbox = MALLOC1(bbox_t) ;
-    surface->bbox->left = x-radius ;
-    surface->bbox->right = x+radius ;
-    surface->bbox->bottom = y-radius ;
-    surface->bbox->top = y+radius ;
-    surface->bbox->near = z-radius ;
-    surface->bbox->far = z+radius ;
+    surface->bbox = MALLOC1(bbox_t);
+    surface->bbox->left = x-radius;
+    surface->bbox->right = x+radius;
+    surface->bbox->bottom = y-radius;
+    surface->bbox->top = y+radius;
+    surface->bbox->near = z-radius;
+    surface->bbox->far = z+radius;
 
     set_sfc_data(surface, data, sfc_hit_sphere,
             diffuse_color, ambient_color, spec_color,
-            phong_exp) ;
+            phong_exp);
 
-    return surface ;
+    return surface;
 }
 
 surface_t* make_triangle(point3_t a, point3_t b, point3_t c,
@@ -280,33 +280,33 @@ surface_t* make_triangle(point3_t a, point3_t b, point3_t c,
 
     // Triangle data.  Pre-compute the normal, because it is the same
     // for all points on the triangle.
-    triangle_data_t* data = MALLOC1(triangle_data_t) ;
-    data->a = a ;
-    data->b = b ;
-    data->c = c ;
+    triangle_data_t* data = MALLOC1(triangle_data_t);
+    data->a = a;
+    data->b = b;
+    data->c = c;
     vector3_t BA, CA;
-    pv_subtract(&b, &a, &BA) ;
-    pv_subtract(&c, &a, &CA) ;
-    cross(&BA, &CA, &(data->normal)) ;
-    normalize(&(data->normal)) ;
+    pv_subtract(&b, &a, &BA);
+    pv_subtract(&c, &a, &CA);
+    cross(&BA, &CA, &(data->normal));
+    normalize(&(data->normal));
 
-    surface_t* surface = MALLOC1(surface_t) ;
+    surface_t* surface = MALLOC1(surface_t);
 
     // Axis-aligned bounding box; this need not be two-dimensional
     // (e.g., if the triangle does not lie in one of the world-frame
     // axis planes).
-    surface->bbox = MALLOC1(bbox_t) ;
-    surface->bbox->left = min4(FLT_MAX, a.x, b.x, c.x) ;
-    surface->bbox->right = max4(FLT_MIN, a.x, b.x, c.x) ;
-    surface->bbox->bottom = min4(FLT_MAX, a.y, b.y, c.y) ;
-    surface->bbox->top = max4(FLT_MIN, a.y, b.y, c.y) ;
-    surface->bbox->near = min4(FLT_MAX, a.z, b.z, c.z) ;
-    surface->bbox->far = max4(FLT_MIN, a.z, b.z, c.z) ;
+    surface->bbox = MALLOC1(bbox_t);
+    surface->bbox->left = min4(FLT_MAX, a.x, b.x, c.x);
+    surface->bbox->right = max4(FLT_MIN, a.x, b.x, c.x);
+    surface->bbox->bottom = min4(FLT_MAX, a.y, b.y, c.y);
+    surface->bbox->top = max4(FLT_MIN, a.y, b.y, c.y);
+    surface->bbox->near = min4(FLT_MAX, a.z, b.z, c.z);
+    surface->bbox->far = max4(FLT_MIN, a.z, b.z, c.z);
 
     set_sfc_data(surface, data, sfc_hit_tri,
-            diffuse_color, ambient_color, spec_color, phong_exp) ;
+            diffuse_color, ambient_color, spec_color, phong_exp);
 
-    return surface ;
+    return surface;
 }
 
 surface_t* make_plane(point3_t a, point3_t b, point3_t c,
@@ -314,38 +314,38 @@ surface_t* make_plane(point3_t a, point3_t b, point3_t c,
         float phong_exp) {
 
     // Plane data.  Like a triangle, pre-compute the surface normal.
-    plane_data_t* data = MALLOC1(plane_data_t) ;
-    data->a = a ;
-    data->b = b ;
-    data->c = c ;
+    plane_data_t* data = MALLOC1(plane_data_t);
+    data->a = a;
+    data->b = b;
+    data->c = c;
     vector3_t BA, CA;
-    pv_subtract(&b, &a, &BA) ;
-    pv_subtract(&c, &a, &CA) ;
-    cross(&BA, &CA, &(data->normal)) ;
-    normalize(&(data->normal)) ;
+    pv_subtract(&b, &a, &BA);
+    pv_subtract(&c, &a, &CA);
+    cross(&BA, &CA, &(data->normal));
+    normalize(&(data->normal));
 
     // No bounding box, because that just doesn't make sense for a
     // surface that extends infinitely far in all directions!
-    surface_t* surface = MALLOC1(surface_t) ;
-    surface->bbox = NULL ;
+    surface_t* surface = MALLOC1(surface_t);
+    surface->bbox = NULL;
     set_sfc_data(surface, data, sfc_hit_plane,
-            diffuse_color, ambient_color, spec_color, phong_exp) ;
+            diffuse_color, ambient_color, spec_color, phong_exp);
 
-    return surface ;
+    return surface;
 }
 
 static void set_sfc_data(surface_t* surface, void* data,
         bool (*hit_fn)(surface_t*, ray3_t*, float, float, hit_record_t*),
         color_t* diff, color_t* amb, color_t* spec, float phong_exp) {
-    surface->data = data ;
-    surface->hit_fn = hit_fn ;
+    surface->data = data;
+    surface->hit_fn = hit_fn;
     surface->diffuse_color = diff;
     surface->ambient_color = amb;
     surface->spec_color = spec;
-    surface->phong_exp = phong_exp ;
-    surface->refl_color = NULL ;
-    surface->refr_index = -1.0f ;
-    surface->atten = NULL ;
+    surface->phong_exp = phong_exp;
+    surface->refl_color = NULL;
+    surface->refr_index = -1.0f;
+    surface->atten = NULL;
 }
 
 //
@@ -357,47 +357,47 @@ static bool sfc_hit_sphere(surface_t* sfc, ray3_t* ray, float t0,
 
     // It is faster to check the discriminant than the bounding box,
     // so we don't bother with the latter.
-    // if (!hit_bbox(sfc->bbox, ray, t0, t1)) return false ;
+    // if (!hit_bbox(sfc->bbox, ray, t0, t1)) return false;
 
-    sphere_data_t* sdata = (sphere_data_t*)(sfc->data) ;
-    point3_t ctr = sdata->center ;
-    float radius = sdata->radius ;
+    sphere_data_t* sdata = (sphere_data_t*)(sfc->data);
+    point3_t ctr = sdata->center;
+    float radius = sdata->radius;
 
-    point3_t* e = &ray->base ;
-    vector3_t* d = &ray->dir ;
+    point3_t* e = &ray->base;
+    vector3_t* d = &ray->dir;
 
-    vector3_t e_minus_ctr ;
-    pv_subtract(e, &ctr, &e_minus_ctr) ;
-    float e_minus_ctr2 = dot(&e_minus_ctr, &e_minus_ctr) ;
-    float d2 = dot(d, d) ;
+    vector3_t e_minus_ctr;
+    pv_subtract(e, &ctr, &e_minus_ctr);
+    float e_minus_ctr2 = dot(&e_minus_ctr, &e_minus_ctr);
+    float d2 = dot(d, d);
 
     // Compute the discriminant first.
-    float b = dot(d, &e_minus_ctr) ;
+    float b = dot(d, &e_minus_ctr);
     float discr = 
-        b*b - d2*(e_minus_ctr2 - radius*radius) ;
+        b*b - d2*(e_minus_ctr2 - radius*radius);
 
     // Compute hit position if discr. is >= 0, and also compute
     // the surface normal.
-    if (discr < 0) return false ;
+    if (discr < 0) return false;
     else {
-        hit->sfc = sfc ;
+        hit->sfc = sfc;
 
         // Hit position.
-        float num = min(-b - sqrt(discr), -b + sqrt(discr)) ;
-        float t = num/d2 ;
+        float num = min(-b - sqrt(discr), -b + sqrt(discr));
+        float t = num/d2;
 
-        if (t < t0 || t > t1) return false ;
+        if (t < t0 || t > t1) return false;
 
-        hit->t = t ;
+        hit->t = t;
 
-        vector3_t ray_vec = *d ;
-        multiply(&ray_vec, hit->t, &ray_vec) ;
-        pv_add(e, &ray_vec, &(hit->hit_pt)) ;
+        vector3_t ray_vec = *d;
+        multiply(&ray_vec, hit->t, &ray_vec);
+        pv_add(e, &ray_vec, &(hit->hit_pt));
 
         // Surface normal.
-        pv_subtract(&(hit->hit_pt), &ctr, &(hit->normal)) ;
-        normalize(&(hit->normal)) ;
-        return true ;
+        pv_subtract(&(hit->hit_pt), &ctr, &(hit->normal));
+        normalize(&(hit->normal));
+        return true;
     }
 }
 
@@ -406,64 +406,64 @@ static bool sfc_hit_planar(bool is_triangle,
         ray3_t* ray, float t0, float t1, hit_record_t* hit) {
 
     // Use the notation of Shirley & Marschner, Section 4.4.2.
-    float a = A->x - B->x ;
-    float b = A->y - B->y ;
-    float c = A->z - B->z ;
-    float d = A->x - C->x ;
-    float e = A->y - C->y ;
-    float f = A->z - C->z ;
-    float g = ray->dir.x ;
-    float h = ray->dir.y ;
-    float i = ray->dir.z ;
-    float j = A->x - ray->base.x ;
-    float k = A->y - ray->base.y ;
-    float l = A->z - ray->base.z ;
+    float a = A->x - B->x;
+    float b = A->y - B->y;
+    float c = A->z - B->z;
+    float d = A->x - C->x;
+    float e = A->y - C->y;
+    float f = A->z - C->z;
+    float g = ray->dir.x;
+    float h = ray->dir.y;
+    float i = ray->dir.z;
+    float j = A->x - ray->base.x;
+    float k = A->y - ray->base.y;
+    float l = A->z - ray->base.z;
 
-    float ei = e*i, hf = h*f, gf = g*f, di = d*i, dh = d*h, eg = e*g ;
-    float ak = a*k, jb = j*b, jc = j*c, al = a*l, bl = b*l, kc = k*c ;
+    float ei = e*i, hf = h*f, gf = g*f, di = d*i, dh = d*h, eg = e*g;
+    float ak = a*k, jb = j*b, jc = j*c, al = a*l, bl = b*l, kc = k*c;
 
-    float ei_hf = ei-hf, gf_di = gf-di, dh_eg = dh-eg ;
-    float ak_jb = ak-jb, jc_al = jc-al, bl_kc = bl-kc ;
+    float ei_hf = ei-hf, gf_di = gf-di, dh_eg = dh-eg;
+    float ak_jb = ak-jb, jc_al = jc-al, bl_kc = bl-kc;
 
-    float M = a*ei_hf + b*gf_di + c*dh_eg ;
+    float M = a*ei_hf + b*gf_di + c*dh_eg;
 
-    float t = -(f*ak_jb + e*jc_al + d*bl_kc)/M ;
+    float t = -(f*ak_jb + e*jc_al + d*bl_kc)/M;
 
-    if (t <= t0 || t > t1) return false ;
+    if (t <= t0 || t > t1) return false;
 
-    float beta = (j*ei_hf + k*gf_di + l*dh_eg)/M ;
-    if (is_triangle && (beta < 0 || beta > 1)) return false ;
+    float beta = (j*ei_hf + k*gf_di + l*dh_eg)/M;
+    if (is_triangle && (beta < 0 || beta > 1)) return false;
 
-    float gamma = (i*ak_jb + h*jc_al + g*bl_kc)/M ;
+    float gamma = (i*ak_jb + h*jc_al + g*bl_kc)/M;
 
     if (!is_triangle || (0 <= gamma && beta+gamma <= 1)) {
-        hit->t = t ;
-        hit->normal = *normal ;
-        vector3_t b_minus_a, c_minus_a ;
-        pv_subtract(B, A, &b_minus_a) ;
-        pv_subtract(C, A, &c_minus_a) ;
-        multiply(&b_minus_a, beta, &b_minus_a) ;
-        multiply(&c_minus_a, gamma, &c_minus_a) ;
-        pv_add(A, &b_minus_a, &(hit->hit_pt)) ;
-        pv_add(&(hit->hit_pt), &c_minus_a, &(hit->hit_pt)) ;
-        return true ;
+        hit->t = t;
+        hit->normal = *normal;
+        vector3_t b_minus_a, c_minus_a;
+        pv_subtract(B, A, &b_minus_a);
+        pv_subtract(C, A, &c_minus_a);
+        multiply(&b_minus_a, beta, &b_minus_a);
+        multiply(&c_minus_a, gamma, &c_minus_a);
+        pv_add(A, &b_minus_a, &(hit->hit_pt));
+        pv_add(&(hit->hit_pt), &c_minus_a, &(hit->hit_pt));
+        return true;
     }
-    else return false ;
+    else return false;
 }
 
 static bool sfc_hit_tri(surface_t* sfc, ray3_t* ray, float t0, float t1,
         hit_record_t* hit) {
     if (hit_bbox(sfc->bbox, ray, t0, t1)) {
-        triangle_data_t* tdata = (triangle_data_t*)(sfc->data) ;
+        triangle_data_t* tdata = (triangle_data_t*)(sfc->data);
         if (sfc_hit_planar(true, &tdata->a, &tdata->b, &tdata->c, 
                     &tdata->normal,
                 ray, t0, t1, hit)) {
-            hit->sfc = sfc ;
-            return true ;
+            hit->sfc = sfc;
+            return true;
         }
     }
 
-    return false ;
+    return false;
 }
 
 bool sfc_hit_bbt(surface_t* sfc, ray3_t* ray, float t0, float t1,
@@ -509,18 +509,18 @@ static bool sfc_hit_plane(surface_t* sfc, ray3_t* ray, float t0, float t1,
 
     // We don't check the bounding box, because planar surfaces do not
     // have bounding boxes!
-    plane_data_t* pdata = (plane_data_t*)(sfc->data) ;
+    plane_data_t* pdata = (plane_data_t*)(sfc->data);
     if (sfc_hit_planar(false, &pdata->a, &pdata->b, &pdata->c, 
             &pdata->normal, ray, t0, t1, hit)) {
-        hit->sfc = sfc ;
-        return true ;
+        hit->sfc = sfc;
+        return true;
     }
-    else return false ;
+    else return false;
 }
 
 bool sfc_hit(surface_t* sfc, ray3_t* ray, float t0, float t1,
         hit_record_t* hit) {
-    return sfc->hit_fn(sfc, ray, t0, t1, hit) ;
+    return sfc->hit_fn(sfc, ray, t0, t1, hit);
 }
 
 //
@@ -530,30 +530,30 @@ bool sfc_hit(surface_t* sfc, ray3_t* ray, float t0, float t1,
 static bool hit_bbox(bbox_t* bbox, ray3_t* ray, float t0, float t1) {
 
     // Intersection times, following lecture notes.
-    float txmin, txmax, tymin, tymax, tzmin, tzmax ;
+    float txmin, txmax, tymin, tymax, tzmin, tzmax;
 
     // Convenience:  ray = e+td.
-    point3_t e = ray->base ;
-    vector3_t d = ray->dir ;
+    point3_t e = ray->base;
+    vector3_t d = ray->dir;
 
     // Intersection times with x-axis cutting planes.
-    float ax = 1.0/d.x ;
-    txmin = ((ax >= 0 ? bbox->left : bbox->right) - e.x)*ax ;
-    txmax = ((ax >= 0 ? bbox->right : bbox->left) - e.x)*ax ;
+    float ax = 1.0/d.x;
+    txmin = ((ax >= 0 ? bbox->left : bbox->right) - e.x)*ax;
+    txmax = ((ax >= 0 ? bbox->right : bbox->left) - e.x)*ax;
 
     // Intersection times with y-axis cutting planes.
-    float ay = 1.0/d.y ;
-    tymin = ((ay >= 0 ? bbox->bottom : bbox->top) - e.y)*ay ;
-    tymax = ((ay >= 0 ? bbox->top : bbox->bottom) - e.y)*ay ;
+    float ay = 1.0/d.y;
+    tymin = ((ay >= 0 ? bbox->bottom : bbox->top) - e.y)*ay;
+    tymax = ((ay >= 0 ? bbox->top : bbox->bottom) - e.y)*ay;
 
     // Intersection times with x-axis cutting planes.
-    float az = 1.0/d.z ;
-    tzmin = ((az >= 0 ? bbox->near : bbox->far) - e.z)*az ;
-    tzmax = ((az >= 0 ? bbox->far : bbox->near) - e.z)*az ;
+    float az = 1.0/d.z;
+    tzmin = ((az >= 0 ? bbox->near : bbox->far) - e.z)*az;
+    tzmax = ((az >= 0 ? bbox->far : bbox->near) - e.z)*az;
 
     return (txmin <= tymax) && (txmax >= tymin) &&
         (txmin <= tzmax) && (txmax >= tzmin) &&
-        (tymin <= tzmax) && (tymax >= tzmin) ;
+        (tymin <= tzmax) && (tymax >= tzmin);
 
 }
 
@@ -599,10 +599,10 @@ surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
     // Set the bounding box of node. Find least/greatest x, y, and z edges.
     // This will setup correct bbox regardless of the number of surfaces, so we
     // do it first.
-    list356_itr_t* s = lst_iterator(surfaces) ;
+    list356_itr_t* s = lst_iterator(surfaces);
     bool first_sfc = true;
     while (lst_has_next(s)) {
-        surface_t* sfc = lst_next(s) ;
+        surface_t* sfc = lst_next(s);
         // If first iteration, set bbox bounds to first object.
         if (first_sfc == true) {
             node->bbox->left= sfc->bbox->left;
@@ -692,6 +692,6 @@ surface_t* make_bbt_node_helper(list356_t* surfaces, int axis) {
         }
     }
     set_sfc_data(node, data, sfc_hit_bbt,
-            NULL, NULL, NULL, 0) ;
+            NULL, NULL, NULL, 0);
     return node;
 }

@@ -59,37 +59,37 @@
 // Application data
 
 // Window data.
-const int DEFAULT_WIN_WIDTH = 800 ;
-const int DEFAULT_WIN_HEIGHT = 600 ;
-int win_width ;
-int win_height ;
+const int DEFAULT_WIN_WIDTH = 800;
+const int DEFAULT_WIN_HEIGHT = 600;
+int win_width;
+int win_height;
 
 // Viewing data.
-point3_t eye ;
-point3_t look_at ;
-vector3_t up_dir ;
+point3_t eye;
+point3_t look_at;
+vector3_t up_dir;
 
 // View-plane specification in camera frame basis.
-float view_plane_dist ;
-float view_plane_width ;
-float view_plane_height ;
+float view_plane_dist;
+float view_plane_width;
+float view_plane_height;
 
-vector3_t eye_frame_u, eye_frame_v, eye_frame_w ;
+vector3_t eye_frame_u, eye_frame_v, eye_frame_w;
 
 // Surface data.
-list356_t* surfaces = NULL ;
+list356_t* surfaces = NULL;
 
 // Light data.
-list356_t* lights = NULL ;
-color_t ambient_light = {.1f, .1f, .1f} ;
+list356_t* lights = NULL;
+color_t ambient_light = {.1f, .1f, .1f};
 
 // Callbacks.
-void handle_display(void) ;
-void handle_resize(int, int) ;
+void handle_display(void);
+void handle_resize(int, int);
 
 // Application functions.
-void win2world(int, int, vector3_t*) ;
-void compute_eye_frame_basis() ;
+void win2world(int, int, vector3_t*);
+void compute_eye_frame_basis();
 color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth,
         bool in_trans);
 bool refract(ray3_t* ray, vector3_t* normal, float refr_index,
@@ -99,47 +99,47 @@ void reflect(ray3_t* i_ray, vector3_t* normal, vector3_t* r_vec);
 // Lighting functions.
 color_t get_specular_refl(ray3_t* ray, hit_record_t* hit_rec, int depth, bool
         in_trans);
-float get_lambert_scale(vector3_t* light_dir, hit_record_t* hit_rec) ;
+float get_lambert_scale(vector3_t* light_dir, hit_record_t* hit_rec);
 float get_blinn_phong_scale(ray3_t* ray, vector3_t* light_dir, 
-        hit_record_t* hit_rec) ;
+        hit_record_t* hit_rec);
 void add_scaled_color(color_t* color, color_t* sfc_color, color_t*
-        light_color, float scale) ;
+        light_color, float scale);
 
 // The in-memory copy of the framebuffer; allocated by handle_resize.
-GLfloat* fb ;
+GLfloat* fb;
 
-void handle_exit() ;
+void handle_exit();
 
 int main(int argc, char **argv) {
 
     // Initialize the drawing window.
-    glutInitWindowSize(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT) ;
-    glutInitWindowPosition(0, 0) ;
-    glutInit(&argc, argv) ;
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB) ;
+    glutInitWindowSize(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT);
+    glutInitWindowPosition(0, 0);
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 
     // Create the main window.
-    glutCreateWindow("Ray tracer") ;
-    glutReshapeFunc(handle_resize) ;
-    glutDisplayFunc(handle_display) ;
+    glutCreateWindow("Ray tracer");
+    glutReshapeFunc(handle_resize);
+    glutDisplayFunc(handle_display);
 
     // Application initialization.
-    set_view_data(&eye, &look_at, &up_dir) ;
-    set_view_plane(&view_plane_dist, &view_plane_width, &view_plane_height) ;
-    surfaces = get_surfaces() ;
-    lights = get_lights() ;
-    compute_eye_frame_basis() ;
+    set_view_data(&eye, &look_at, &up_dir);
+    set_view_plane(&view_plane_dist, &view_plane_width, &view_plane_height);
+    surfaces = get_surfaces();
+    lights = get_lights();
+    compute_eye_frame_basis();
 
     // Enter the main event loop.
-    atexit(handle_exit) ;
-    glutMainLoop() ;
+    atexit(handle_exit);
+    glutMainLoop();
 
-    return EXIT_SUCCESS ;
+    return EXIT_SUCCESS;
 }
 
 void handle_exit() {
-    debug("handle_exit()") ;
-    if (fb != NULL) free(fb) ;
+    debug("handle_exit()");
+    if (fb != NULL) free(fb);
 }
 
 /** Handle a resize event by recording the new width and height.
@@ -149,14 +149,14 @@ void handle_exit() {
  */
 void handle_resize(int width, int height) {
 
-    debug("handle_resize(%d, %d)\n", width, height) ;
-    win_width = width ;
-    win_height = height ;
+    debug("handle_resize(%d, %d)\n", width, height);
+    win_width = width;
+    win_height = height;
 
-    if (fb != NULL) free(fb) ;
-    debug("handle_resize():  allocating in-memory framebuffer") ;
-    fb = malloc(win_width*win_height*3*sizeof(GLfloat)) ;
-    bzero(fb, (win_width*win_height*3)*sizeof(GLfloat)) ;
+    if (fb != NULL) free(fb);
+    debug("handle_resize():  allocating in-memory framebuffer");
+    fb = malloc(win_width*win_height*3*sizeof(GLfloat));
+    bzero(fb, (win_width*win_height*3)*sizeof(GLfloat));
 
 }
 
@@ -170,7 +170,7 @@ void handle_resize(int width, int height) {
  *      set for color c of pixel (x, y).
  */
 int fb_offset(int y, int x, int c) {
-    return y*(win_width*3) + x*3 + c ;
+    return y*(win_width*3) + x*3 + c;
 }
 
 /** Get the shade determined by a given ray.
@@ -187,39 +187,39 @@ int fb_offset(int y, int x, int c) {
  *      <code>r</code> in the interval <code>[t0, t1]</code>.
  */
 color_t ray_trace(ray3_t ray, float t0, float t1, int depth, bool in_trans) {
-    assert(depth >= 0) ;
+    assert(depth >= 0);
 
-    color_t color = {0.0, 0.0, 0.0} ;
+    color_t color = {0.0, 0.0, 0.0};
 
-    if (depth ==0) return color ;
+    if (depth ==0) return color;
 
-    hit_record_t hit_rec, closest_hit_rec ;
+    hit_record_t hit_rec, closest_hit_rec;
 
     // Get a hit record for the closest object that is hit.
-    bool hit_something = false ;
-    list356_itr_t* s = lst_iterator(surfaces) ;
+    bool hit_something = false;
+    list356_itr_t* s = lst_iterator(surfaces);
     while (lst_has_next(s)) {
-        surface_t* sfc = lst_next(s) ;
+        surface_t* sfc = lst_next(s);
         if (sfc_hit(sfc, &ray, t0, t1, &hit_rec)) {
             if (hit_rec.t < t1) {
-                hit_something = true ;
+                hit_something = true;
                 memcpy(&closest_hit_rec, &hit_rec, 
-                        sizeof(hit_record_t)) ;
-                t1 = hit_rec.t ;
+                        sizeof(hit_record_t));
+                t1 = hit_rec.t;
             }
         }
     }
-    lst_iterator_free(s) ;
+    lst_iterator_free(s);
 
     // If we hit something, color the pixel.
     if (hit_something) {
-        surface_t* sfc = closest_hit_rec.sfc ;
+        surface_t* sfc = closest_hit_rec.sfc;
 
         // Specular reflection.
         if (sfc->refl_color != NULL) {
             color_t refl_color = get_specular_refl(&ray,
-                    &closest_hit_rec, depth, in_trans) ;
-            add_scaled_color(&color, sfc->refl_color, &refl_color, 1.0f) ;
+                    &closest_hit_rec, depth, in_trans);
+            add_scaled_color(&color, sfc->refl_color, &refl_color, 1.0f);
         }
 
         // Tranparency
@@ -232,62 +232,62 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth, bool in_trans) {
             color.blue += (trans_color.blue);
         }
         // Ambient shading.
-        add_scaled_color(&color, sfc->ambient_color, &ambient_light, 1.0f) ;
+        add_scaled_color(&color, sfc->ambient_color, &ambient_light, 1.0f);
 
         // Lighting.
-        list356_itr_t* light_itr = lst_iterator(lights) ;
+        list356_itr_t* light_itr = lst_iterator(lights);
         while (lst_has_next(light_itr)) {
-            light_t* light = lst_next(light_itr) ;
-            vector3_t light_dir ;
+            light_t* light = lst_next(light_itr);
+            vector3_t light_dir;
             pv_subtract(light->position, &(closest_hit_rec.hit_pt),
-                    &light_dir) ;
-            normalize(&light_dir) ;
+                    &light_dir);
+            normalize(&light_dir);
 
             // Check for global shadows.
-            bool do_lighting = true ;
+            bool do_lighting = true;
 
             // Bool for if the shadow is caused by transparent surface.
-            bool trans_shadow = false ;
+            bool trans_shadow = false;
 
-            ray3_t light_ray = {closest_hit_rec.hit_pt, light_dir} ;
+            ray3_t light_ray = {closest_hit_rec.hit_pt, light_dir};
             float light_dist = dist(&closest_hit_rec.hit_pt,
-                    light->position) ;
-            s = lst_iterator(surfaces) ;
+                    light->position);
+            s = lst_iterator(surfaces);
             while (lst_has_next(s)) {
-                surface_t* sfc = lst_next(s) ;
+                surface_t* sfc = lst_next(s);
                 if (sfc_hit(sfc, &light_ray, EPSILON, light_dist, &hit_rec)) {
-                    do_lighting = false ;
+                    do_lighting = false;
                     // If shadow is caused by transparent surface, we add
                     // Lambertian shading only so our shadows are not opaque.
                     if (hit_rec.sfc->refr_index != -1) trans_shadow = true;
-                    break ;
+                    break;
                 }
             }
-            lst_iterator_free(s) ;
+            lst_iterator_free(s);
             if (!do_lighting) {
                 if (!trans_shadow) continue;
             }
 
             // Lambertian shading.
-            float scale = get_lambert_scale(&light_dir, &closest_hit_rec) ;
+            float scale = get_lambert_scale(&light_dir, &closest_hit_rec);
             add_scaled_color(&color, sfc->diffuse_color, light->color,
-                    scale) ;
+                    scale);
             //}
 
             // Blin-Phong shading (if shadow is not caused by transparent
             // surface).
             if (!trans_shadow) {
                 float phong_scale = get_blinn_phong_scale(&ray, &light_dir,
-                        &closest_hit_rec) ;
+                        &closest_hit_rec);
                 add_scaled_color(&color, sfc->spec_color, light->color, 
-                        phong_scale) ;
+                        phong_scale);
             }
         }   // while(lst_has_next(light_itr))
 
-        lst_iterator_free(light_itr) ;
+        lst_iterator_free(light_itr);
 
     }   // if (hit_something)
-    return color ;
+    return color;
 }
 
 /** Get the shade from specular reflection.
@@ -301,16 +301,16 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth, bool in_trans) {
  */
 color_t get_specular_refl(ray3_t* ray, hit_record_t* hit_rec, int depth, bool
         in_trans) {
-    ray3_t refl_ray ;
-    refl_ray.base = hit_rec->hit_pt ;
-    refl_ray.dir = hit_rec->normal ;
+    ray3_t refl_ray;
+    refl_ray.base = hit_rec->hit_pt;
+    refl_ray.dir = hit_rec->normal;
     multiply(&hit_rec->normal, 
             2*dot(&ray->dir, &hit_rec->normal), 
-            &refl_ray.dir) ;
-    subtract(&ray->dir, &refl_ray.dir, &refl_ray.dir) ;
+            &refl_ray.dir);
+    subtract(&ray->dir, &refl_ray.dir, &refl_ray.dir);
     color_t refl_color = ray_trace(refl_ray, EPSILON, FLT_MAX, 
-            depth-1, in_trans) ;
-    return refl_color ;
+            depth-1, in_trans);
+    return refl_color;
 }
 
 /**
@@ -372,24 +372,24 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth, bool
         vector3_t dist_vec;
         refract(ray, &normal, index, &dist_vec, in_trans);
         ray3_t t_ray = {hit_rec->hit_pt, dist_vec};
-        hit_record_t t_hit_rec, t_closest_hit_rec ;
+        hit_record_t t_hit_rec, t_closest_hit_rec;
 
         // Get a hit record for the closest object that is hit in dir t_ray.
-        bool hit_something = false ;
+        bool hit_something = false;
         float t1 = FLT_MAX;
-        list356_itr_t* s = lst_iterator(surfaces) ;
+        list356_itr_t* s = lst_iterator(surfaces);
         while (lst_has_next(s)) {
-            surface_t* sfc = lst_next(s) ;
+            surface_t* sfc = lst_next(s);
             if (sfc_hit(sfc, &t_ray, EPSILON, t1, &t_hit_rec)) {
                 if (t_hit_rec.t < t1) {
-                    hit_something = true ;
+                    hit_something = true;
                     memcpy(&t_closest_hit_rec, &t_hit_rec, 
-                            sizeof(hit_record_t)) ;
-                    t1 = t_hit_rec.t ;
+                            sizeof(hit_record_t));
+                    t1 = t_hit_rec.t;
                 }
             }
         }
-        lst_iterator_free(s) ;
+        lst_iterator_free(s);
         float t = dist(&hit_rec->hit_pt, &t_closest_hit_rec.hit_pt);
 
         // Calculate attenuation.
@@ -444,7 +444,7 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth, bool
  *  @return the scale factor to use for Lambertian shading.
  */
 float get_lambert_scale(vector3_t* light_dir, hit_record_t* hit_rec) {
-    return max(0.0f, dot(light_dir, &(hit_rec->normal))) ;
+    return max(0.0f, dot(light_dir, &(hit_rec->normal)));
 }
 
 /** Get the scale factor for Blinn-Phong specular highlighting from a
@@ -458,15 +458,15 @@ float get_lambert_scale(vector3_t* light_dir, hit_record_t* hit_rec) {
  */
 float get_blinn_phong_scale(ray3_t* ray, vector3_t* light_dir, 
         hit_record_t* hit_rec) {
-    vector3_t view, half_v ;
-    multiply(&ray->dir, -1.0, &view) ;
-    normalize(&view) ;
-    add(&view, light_dir, &half_v) ;
-    normalize(&half_v) ;
+    vector3_t view, half_v;
+    multiply(&ray->dir, -1.0, &view);
+    normalize(&view);
+    add(&view, light_dir, &half_v);
+    normalize(&half_v);
     float phong_scale = max(0, 
-            dot(&half_v, &hit_rec->normal)) ;
-    phong_scale = pow(phong_scale, hit_rec->sfc->phong_exp) ;
-    return phong_scale ;
+            dot(&half_v, &hit_rec->normal));
+    phong_scale = pow(phong_scale, hit_rec->sfc->phong_exp);
+    return phong_scale;
 }
 
 /** Add a scaled product of surface and light colors to a given color.
@@ -483,50 +483,50 @@ float get_blinn_phong_scale(ray3_t* ray, vector3_t* light_dir,
  */
 void add_scaled_color(color_t* color, color_t* sfc_color, color_t* light_color,
         float scale) {
-    color->red += (sfc_color->red)*(light_color->red)*scale ;
-    color->green += (sfc_color->green)*(light_color->green)*scale ;
-    color->blue += (sfc_color->blue)*(light_color->blue)*scale ;
+    color->red += (sfc_color->red)*(light_color->red)*scale;
+    color->green += (sfc_color->green)*(light_color->green)*scale;
+    color->blue += (sfc_color->blue)*(light_color->blue)*scale;
 }
 
 /** Display callback; render the scene.
  */
 void handle_display() {
     // The ray itself.
-    ray3_t ray ;
-    ray.base = eye ;
+    ray3_t ray;
+    ray.base = eye;
 
-    color_t color ;
+    color_t color;
 
 #ifndef NDEBUG
-    clock_t start_time, end_time ;
-    start_time = clock() ;
+    clock_t start_time, end_time;
+    start_time = clock();
 #endif
     for (int x=0; x<win_width; ++x) {
         for (int y=0; y<win_height; ++y) {
-            win2world(x, y, &ray.dir) ;
+            win2world(x, y, &ray.dir);
             debug_c((x==400 && y==300),
                 "view ray = {(%f, %f, %f), (%f, %f, %f)}.\n",
                 eye.x, eye.y, eye.z, 
-                ray.dir.x, ray.dir.y, ray.dir.z) ;
+                ray.dir.x, ray.dir.y, ray.dir.z);
             //Start ray eye assuming we're not inside a transparent surface.
-            color = ray_trace(ray, 1.0 + EPSILON, FLT_MAX, 5, false) ;
-            *(fb+fb_offset(y, x, 0)) = color.red ;
-            *(fb+fb_offset(y, x, 1)) = color.green ;
-            *(fb+fb_offset(y, x, 2)) = color.blue ;
+            color = ray_trace(ray, 1.0 + EPSILON, FLT_MAX, 5, false);
+            *(fb+fb_offset(y, x, 0)) = color.red;
+            *(fb+fb_offset(y, x, 1)) = color.green;
+            *(fb+fb_offset(y, x, 2)) = color.blue;
         }
     }
 #ifndef NDEBUG
-    end_time = clock() ;
+    end_time = clock();
     debug("handle_display(): frame calculation time = %f sec.",
-            ((double)(end_time-start_time))/CLOCKS_PER_SEC) ;
+            ((double)(end_time-start_time))/CLOCKS_PER_SEC);
 #endif
 
     // The following line throws a implicit declaration compiler warning: but
     // it was in hw2bp1.c solution file so I will ignore it.
-    glWindowPos2s(0, 0) ;
-    glDrawPixels(win_width, win_height, GL_RGB, GL_FLOAT, fb) ;
-    glFlush() ;
-    glutSwapBuffers() ;
+    glWindowPos2s(0, 0);
+    glDrawPixels(win_width, win_height, GL_RGB, GL_FLOAT, fb);
+    glFlush();
+    glutSwapBuffers();
 }
 
 /** Compute the eye frame basis from the eye point, look-at point,
@@ -536,20 +536,20 @@ void handle_display() {
  *  -# v <- w x u.
  */
 void compute_eye_frame_basis() {
-    pv_subtract(&eye, &look_at, &eye_frame_w) ;
-    normalize(&eye_frame_w) ;
+    pv_subtract(&eye, &look_at, &eye_frame_w);
+    normalize(&eye_frame_w);
 
-    cross(&up_dir, &eye_frame_w, &eye_frame_u) ;
-    normalize(&eye_frame_u) ;
+    cross(&up_dir, &eye_frame_w, &eye_frame_u);
+    normalize(&eye_frame_u);
 
-    cross(&eye_frame_w, &eye_frame_u, &eye_frame_v) ;
+    cross(&eye_frame_w, &eye_frame_u, &eye_frame_v);
 
     debug("compute_eye_frame_basis():  eye_frame_u = (%f, %f, %f)",
-            eye_frame_u.x, eye_frame_u.y, eye_frame_u.z) ;
+            eye_frame_u.x, eye_frame_u.y, eye_frame_u.z);
     debug("compute_eye_frame_basis():  eye_frame_v = (%f, %f, %f)",
-            eye_frame_v.x, eye_frame_v.y, eye_frame_v.z) ;
+            eye_frame_v.x, eye_frame_v.y, eye_frame_v.z);
     debug("compute_eye_frame_basis():  eye_frame_w = (%f, %f, %f)",
-            eye_frame_w.x, eye_frame_w.y, eye_frame_w.z) ;
+            eye_frame_w.x, eye_frame_w.y, eye_frame_w.z);
 }
 
 /** Compute the viewing ray direction in the world frame basis.
@@ -562,22 +562,22 @@ void compute_eye_frame_basis() {
  */
 void win2world(int x, int y, vector3_t* dir) {
     // Compute coordinates in eye frame of corners of view plane.
-    float left = -view_plane_width/2.0f ;
-    float bottom = -view_plane_height/2.0f ;
+    float left = -view_plane_width/2.0f;
+    float bottom = -view_plane_height/2.0f;
 
     // Compute vector from eye to window position in eye coordinates.
-    float u = left + (x+.5f)/win_width*view_plane_width ;
-    float v = bottom + (y+.5f)/win_height*view_plane_height ;
-    float w = -view_plane_dist ;
+    float u = left + (x+.5f)/win_width*view_plane_width;
+    float v = bottom + (y+.5f)/win_height*view_plane_height;
+    float w = -view_plane_dist;
     debug_c((x == 400 && y == 300),
-            "win2world():  u, v, w, = %f, %f, %f", u, v, w) ;
+            "win2world():  u, v, w, = %f, %f, %f", u, v, w);
 
     // Transform vector to world coordinates.
-    dir->x = u*eye_frame_u.x + v*eye_frame_v.x + w*eye_frame_w.x ;
-    dir->y = u*eye_frame_u.y + v*eye_frame_v.y + w*eye_frame_w.y ;
-    dir->z = u*eye_frame_u.z + v*eye_frame_v.z + w*eye_frame_w.z ;
+    dir->x = u*eye_frame_u.x + v*eye_frame_v.x + w*eye_frame_w.x;
+    dir->y = u*eye_frame_u.y + v*eye_frame_v.y + w*eye_frame_w.y;
+    dir->z = u*eye_frame_u.z + v*eye_frame_v.z + w*eye_frame_w.z;
     debug_c((x==400 && y==300),
-        "win2world():  i, j, k = %f, %f, %f\n", dir->x, dir->y, dir->z) ;
+        "win2world():  i, j, k = %f, %f, %f\n", dir->x, dir->y, dir->z);
 }
 
 /**
