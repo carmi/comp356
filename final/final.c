@@ -342,29 +342,31 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
         // Get closest_hit_rec for ray_trace(t_vec)
         /*
         ray3_t t_ray = {hit_rec->hit_pt, t_vec};
-        hit_record_t hit_rec, closest_hit_rec ;
+        hit_record_t t_hit_rec, t_closest_hit_rec ;
 
         // Get a hit record for the closest object that is hit.
         bool hit_something = false ;
+        float t1 = FLT_MAX;
         list356_itr_t* s = lst_iterator(surfaces) ;
         while (lst_has_next(s)) {
             surface_t* sfc = lst_next(s) ;
-            if (sfc_hit(sfc, &ray, t0, t1, &hit_rec)) {
-                if (hit_rec.t < t1) {
+            if (sfc_hit(sfc, &t_ray, EPSILON, t1, &t_hit_rec)) {
+                if (t_hit_rec.t < t1) {
                     hit_something = true ;
-                    memcpy(&closest_hit_rec, &hit_rec, 
+                    memcpy(&t_closest_hit_rec, &t_hit_rec, 
                             sizeof(hit_record_t)) ;
-                    t1 = hit_rec.t ;
+                    t1 = t_hit_rec.t ;
                 }
             }
         }
         lst_iterator_free(s) ;
+        float t = dist(&hit_rec->hit_pt, &t_closest_hit_rec.hit_pt);
+        debug("t = %f", t);
+        if (t > 1) t = hit_rec->t;
+        debug("t = %f", t);
         */
 
-
-
-
-
+        
         // TODO: this may not be correct, but it may be.
         float t = hit_rec->t;
         //debug("t = %f", t);
@@ -393,6 +395,7 @@ color_t get_transparency(ray3_t* ray, hit_record_t* hit_rec, int depth) {
             trans_color.red = trans_color.red*k.red;
             trans_color.green = trans_color.green*k.green;
             trans_color.blue = trans_color.blue*k.blue;
+            //debug("trans_color block7af { %f, %f, %f }", trans_color.red, trans_color.green, trans_color.blue);
             return trans_color;
         }
     }
