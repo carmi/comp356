@@ -9,7 +9,7 @@ EXECUTABLES=final
 
 LIBS=-l356
 
-FINAL_DEPENDENCIES=final.c surface.c surfaces_lights.c debug.h
+FINAL_DEPENDENCIES=final.c surface.c surfaces_lights.c
 
 SOLUTION_FILES=final.c surface.h surface.c surfaces_lights.h surfaces_lights.c debug.h Makefile
 
