@@ -606,8 +606,8 @@ bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
     vector3_t d_normalized = *d;
     vector3_t n_normalized = *n;
 
-    //normalize(&d_normalized);
-    //normalize(&n_normalized);
+    normalize(&d_normalized);
+    normalize(&n_normalized);
 
     //debug("ray_dir = { %f, %f, %f }", ray->dir.x, ray->dir.y, ray->dir.z);
     //debug("d = { %f, %f, %f }", d->x, d->y, d->z);
@@ -627,6 +627,7 @@ bool refract(ray3_t* ray, vector3_t* normal, float refr_index, vector3_t*
         toggle_trans_bool();
     }
 
+    //refr_ratio = 1.0f/refr_index;
     float refr_ratio2 = refr_ratio * refr_ratio;
 
     // Part 2: (1 - n^2(1 - d_dot_n^2)/1)
