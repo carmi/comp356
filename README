@@ -1,3 +1,7 @@
-Inital README for Comp356
+#Comp356 - Computer Graphics#
+##Fall 2010##
 
-Evan Carmi and Carlo Francisco
+This is a repository of graphics applications written in C including:
+* A ray tracer
+* A maze game
+* Anti-aliasing application
