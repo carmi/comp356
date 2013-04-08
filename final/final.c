@@ -57,10 +57,17 @@
 #define EPSILON .001
 
 // Application data
+bool ambient_shading = true;
+bool transparency = true;
+bool spec_reflection = true;
+
+bool lighting = true;
+bool lambertian_shading = true;
+bool blin_phong_shading = true;
 
 // Window data.
-const int DEFAULT_WIN_WIDTH = 800;
-const int DEFAULT_WIN_HEIGHT = 600;
+const int DEFAULT_WIN_WIDTH = 400;
+const int DEFAULT_WIN_HEIGHT = 300;
 int win_width;
 int win_height;
 
@@ -124,9 +131,9 @@ int main(int argc, char **argv) {
     glutDisplayFunc(handle_display);
 
     // Application initialization.
+    surfaces = get_surfaces();
     set_view_data(&eye, &look_at, &up_dir);
     set_view_plane(&view_plane_dist, &view_plane_width, &view_plane_height);
-    surfaces = get_surfaces();
     lights = get_lights();
     compute_eye_frame_basis();
 
@@ -191,7 +198,7 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth, bool in_trans) {
 
     color_t color = {0.0, 0.0, 0.0};
 
-    if (depth ==0) return color;
+    if (depth == 0) return color;
 
     hit_record_t hit_rec, closest_hit_rec;
 
@@ -207,6 +214,7 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth, bool in_trans) {
                         sizeof(hit_record_t));
                 t1 = hit_rec.t;
             }
+            else assert("wrong");
         }
     }
     lst_iterator_free(s);
@@ -216,75 +224,89 @@ color_t ray_trace(ray3_t ray, float t0, float t1, int depth, bool in_trans) {
         surface_t* sfc = closest_hit_rec.sfc;
 
         // Specular reflection.
-        if (sfc->refl_color != NULL) {
-            color_t refl_color = get_specular_refl(&ray,
-                    &closest_hit_rec, depth, in_trans);
-            add_scaled_color(&color, sfc->refl_color, &refl_color, 1.0f);
+        if (spec_reflection) {
+          if (sfc->refl_color != NULL) {
+              color_t refl_color = get_specular_refl(&ray,
+                      &closest_hit_rec, depth, in_trans);
+              add_scaled_color(&color, sfc->refl_color, &refl_color, 1.0f);
+          }
         }
 
         // Tranparency
-        if (sfc->refr_index != -1) {
-            color_t trans_color = get_transparency(&ray, &closest_hit_rec,
-                    depth, !in_trans);
-            // Only add returned color, don't multiply by a surface_color.
-            color.red += (trans_color.red);
-            color.green += (trans_color.green);
-            color.blue += (trans_color.blue);
+        if (transparency) {
+          if (sfc->refr_index != -1) {
+              color_t trans_color = get_transparency(&ray, &closest_hit_rec,
+                      depth, !in_trans);
+              // Only add returned color, don't multiply by a surface_color.
+              color.red += (trans_color.red);
+              color.green += (trans_color.green);
+              color.blue += (trans_color.blue);
+          }
         }
+
         // Ambient shading.
-        add_scaled_color(&color, sfc->ambient_color, &ambient_light, 1.0f);
+        if (ambient_shading) {
+          add_scaled_color(&color, sfc->ambient_color, &ambient_light, 1.0f);
+        }
 
         // Lighting.
-        list356_itr_t* light_itr = lst_iterator(lights);
-        while (lst_has_next(light_itr)) {
-            light_t* light = lst_next(light_itr);
-            vector3_t light_dir;
-            pv_subtract(light->position, &(closest_hit_rec.hit_pt),
-                    &light_dir);
-            normalize(&light_dir);
+        if (lighting) {
+          list356_itr_t* light_itr = lst_iterator(lights);
+          while (lst_has_next(light_itr)) {
+              light_t* light = lst_next(light_itr);
+              vector3_t light_dir;
+              pv_subtract(light->position, &(closest_hit_rec.hit_pt),
+                      &light_dir);
+              normalize(&light_dir);
 
-            // Check for global shadows.
-            bool do_lighting = true;
+              // Check for global shadows.
+              bool do_lighting = true;
 
-            // Bool for if the shadow is caused by transparent surface.
-            bool trans_shadow = false;
+              // Bool for if the shadow is caused by transparent surface.
+              bool trans_shadow = false;
 
-            ray3_t light_ray = {closest_hit_rec.hit_pt, light_dir};
-            float light_dist = dist(&closest_hit_rec.hit_pt,
-                    light->position);
-            s = lst_iterator(surfaces);
-            while (lst_has_next(s)) {
-                surface_t* sfc = lst_next(s);
-                if (sfc_hit(sfc, &light_ray, EPSILON, light_dist, &hit_rec)) {
-                    do_lighting = false;
-                    // If shadow is caused by transparent surface, we add
-                    // Lambertian shading only so our shadows are not opaque.
-                    if (hit_rec.sfc->refr_index != -1) trans_shadow = true;
-                    break;
+              ray3_t light_ray = {closest_hit_rec.hit_pt, light_dir};
+              float light_dist = dist(&closest_hit_rec.hit_pt,
+                      light->position);
+              s = lst_iterator(surfaces);
+              while (lst_has_next(s)) {
+                  surface_t* sfc = lst_next(s);
+                  if (sfc_hit(sfc, &light_ray, EPSILON, light_dist, &hit_rec)) {
+                      do_lighting = false;
+                      // If shadow is caused by transparent surface, we add
+                      // Lambertian shading only so our shadows are not opaque.
+                      if (hit_rec.sfc->refr_index != -1) trans_shadow = true;
+                      break;
+                  }
+              }
+              lst_iterator_free(s);
+              if (!do_lighting) {
+                  continue;
+              }
+
+              // Lambertian shading.
+              if (lambertian_shading) {
+                if (!trans_shadow) {
+                    float scale = get_lambert_scale(&light_dir, &closest_hit_rec);
+                    add_scaled_color(&color, sfc->diffuse_color, light->color,
+                            scale);
                 }
-            }
-            lst_iterator_free(s);
-            if (!do_lighting) {
-                if (!trans_shadow) continue;
-            }
-
-            // Lambertian shading.
-            float scale = get_lambert_scale(&light_dir, &closest_hit_rec);
-            add_scaled_color(&color, sfc->diffuse_color, light->color,
-                    scale);
-            //}
+              }
 
             // Blin-Phong shading (if shadow is not caused by transparent
             // surface).
-            if (!trans_shadow) {
-                float phong_scale = get_blinn_phong_scale(&ray, &light_dir,
-                        &closest_hit_rec);
-                add_scaled_color(&color, sfc->spec_color, light->color, 
-                        phong_scale);
+            if (blin_phong_shading) {
+              if (!trans_shadow) {
+                  float phong_scale = get_blinn_phong_scale(&ray, &light_dir,
+                          &closest_hit_rec);
+                  add_scaled_color(&color, sfc->spec_color, light->color, 
+                          phong_scale);
+              }
             }
-        }   // while(lst_has_next(light_itr))
+        }
 
         lst_iterator_free(light_itr);
+    }
 
     }   // if (hit_something)
     return color;
