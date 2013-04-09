@@ -7,4 +7,8 @@ This is a repository of graphics applications written in C including:
 
 The ray tracer is the most exciting. Below are some images it has rendered:
 
-![Alt text](/path/to/img.jpg?raw=true "Optional title")
+![Three Spheres](https://raw.github.com/carmi/comp356/master/final/images/3spheres.png?raw=true)
+
+![Transparent Cube](https://raw.github.com/carmi/comp356/master/final/images/cube-trans.png?raw=true)
+
+![RG](https://raw.github.com/carmi/comp356/master/final/images/rg.png?raw=true)
